@@ -1,0 +1,51 @@
+services:
+
+    laravel:
+        build:
+            context: ./laravel/docker/8.4
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.4/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8081}:8081'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+            - '8080:8080'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+        volumes:
+            - './laravel:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - mariadb
+
+    mariadb:
+        image: mariadb:latest
+        container_name: mariadb
+        restart: unless-stopped
+        environment:
+            MARIADB_RANDOM_ROOT_PASSWORD: 'yes'
+            MYSQL_DATABASE: 'daiboken'
+            MYSQL_USER: 'daiboken_serveur'
+            MYSQL_PASSWORD: '2L!3fT]hh7t7[B'
+        ports:
+            - '${DB_PORT:-3306}:3306'
+        volumes:
+            - mariadb_data:/var/lib/mysql
+        networks:
+            - sail
+
+networks:
+    sail:
+        driver: bridge
+
+volumes:
+    mariadb_data:
+        driver: local
