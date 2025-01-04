@@ -1,21 +1,20 @@
 <?php
 
-namespace App\Filament\Resources\AchatResource\Pages;
+namespace App\Filament\Resources\VenteResource\Pages;
 
-use App\Filament\Resources\AchatResource;
-use Filament\Actions;
+use App\Filament\Resources\VenteResource;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
+use Filament\Forms\Form;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
-use Filament\Forms\Form;
 
-class CreateAchat extends CreateRecord
+class CreateVente extends CreateRecord
 {
     use HasWizard;
 
-    protected static string $resource = AchatResource::class;
+    protected static string $resource = VenteResource::class;
 
     public function form(Form $form): Form
     {
@@ -38,7 +37,7 @@ class CreateAchat extends CreateRecord
                 ->schema([
                     Section::make()
                         ->schema(
-                            AchatResource::getDetailsFormSchema()
+                            VenteResource::getDetailsFormSchema()
                         )
                         ->columns(),
                 ]),
@@ -47,7 +46,7 @@ class CreateAchat extends CreateRecord
                 ->schema([
                     Section::make()
                         ->schema([
-                            AchatResource::getPaiementForm(),
+                            VenteResource::getPaiementForm(),
                         ]),
                 ]),
         ];
@@ -75,5 +74,4 @@ class CreateAchat extends CreateRecord
 
         return $data;
     }
-
 }

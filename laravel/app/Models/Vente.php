@@ -6,7 +6,7 @@ use App\Enums\StatutEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Achat extends Model
+class Vente extends Model
 {
     use HasFactory;
 
@@ -39,14 +39,14 @@ class Achat extends Model
 
     public function produits()
     {
-        return $this->belongsToMany(Produit::class, 'achat_produit')
+        return $this->belongsToMany(Produit::class, 'vente_produit')
                     ->withPivot('quantite')
                     ->withTimestamps();
     }
 
     public function services()
     {
-        return $this->belongsToMany(Service::class, 'achat_service')
+        return $this->belongsToMany(Service::class, 'vente_service')
                     ->withTimestamps();
     }
 

@@ -14,7 +14,7 @@ class CreateClient extends CreateRecord
     {
         $serviceIds = [1, 2];
 
-        return route('filament.admin.resources.achats.create', [
+        return route('filament.admin.resources.ventes.create', [
             'client_id' => $this->record->id,
             'service_ids' => implode(',', $serviceIds),
         ]);

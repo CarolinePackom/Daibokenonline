@@ -12,10 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('achats', function (Blueprint $table) {
+        Schema::create('ventes', function (Blueprint $table) {
             $table->id();
 
-            // Statut de l'achat
+            // Statut de la vente
             $table->enum('statut', array_column(StatutEnum::cases(), 'value'))->default(StatutEnum::Pret->value);
 
             // Relations
@@ -40,31 +40,31 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Table pivot : Produits dans un achat
-        Schema::create('achat_produit', function (Blueprint $table) {
+        Schema::create('vente_produit', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('achat_id')->constrained()->onDelete('cascade');
+            $table->foreignId('vente_id')->constrained()->onDelete('cascade');
             $table->foreignId('produit_id')->constrained()->onDelete('cascade');
             $table->integer('quantite')->default(1);
             $table->timestamps();
         });
 
-        // Table pivot : Services dans un achat
-        Schema::create('achat_service', function (Blueprint $table) {
+        Schema::create('vente_service', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('achat_id')->constrained()->onDelete('cascade');
+            $table->foreignId('vente_id')->constrained()->onDelete('cascade');
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }
+
+
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('achat_service');
-        Schema::dropIfExists('achat_produit');
-        Schema::dropIfExists('achats');
+        Schema::dropIfExists('vente_service');
+        Schema::dropIfExists('vente_produit');
+        Schema::dropIfExists('ventes');
     }
 };

@@ -17,9 +17,9 @@ class Produit extends Model implements HasMedia
         'en_vente',
     ];
 
-    public function achats()
+    public function ventes()
     {
-        return $this->belongsToMany(Achat::class, 'achat_produit')
+        return $this->belongsToMany(Vente::class, 'vente_produit')
                     ->withPivot('quantite')
                     ->withTimestamps();
     }

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Enums\StatutEnum;
-use App\Filament\Resources\AchatResource\Pages;
-use App\Filament\Resources\AchatResource\RelationManagers;
-use App\Models\Achat;
+use App\Filament\Resources\VenteResource\Pages;
+use App\Filament\Resources\VenteResource\RelationManagers;
+use App\Models\Vente;
 use App\Models\Client;
 use App\Models\Formule;
 use App\Models\Produit;
@@ -23,9 +23,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 
-class AchatResource extends Resource
+class VenteResource extends Resource
 {
-    protected static ?string $model = Achat::class;
+    protected static ?string $model = Vente::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
@@ -54,20 +54,20 @@ class AchatResource extends Resource
                                 static::getProduitsRepeater(),
                             ]),
                     ])
-                    ->columnSpan(['lg' => fn (?Achat $record) => $record === null ? 3 : 2]),
+                    ->columnSpan(['lg' => fn (?Vente $record) => $record === null ? 3 : 2]),
 
                 Forms\Components\Section::make()
                     ->schema([
                         Forms\Components\Placeholder::make('created_at')
                             ->label('Created at')
-                            ->content(fn (Achat $record): ?string => $record->created_at?->diffForHumans()),
+                            ->content(fn (Vente $record): ?string => $record->created_at?->diffForHumans()),
 
                         Forms\Components\Placeholder::make('updated_at')
                             ->label('Last modified at')
-                            ->content(fn (Achat $record): ?string => $record->updated_at?->diffForHumans()),
+                            ->content(fn (Vente $record): ?string => $record->updated_at?->diffForHumans()),
                     ])
                     ->columnSpan(['lg' => 1])
-                    ->hidden(fn (?Achat $record) => $record === null),
+                    ->hidden(fn (?Vente $record) => $record === null),
             ])
             ->columns(3);
     }
@@ -126,9 +126,9 @@ class AchatResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAchats::route('/'),
-            'create' => Pages\CreateAchat::route('/create'),
-            'edit' => Pages\EditAchat::route('/{record}'),
+            'index' => Pages\ListVentes::route('/'),
+            'create' => Pages\CreateVente::route('/create'),
+            'edit' => Pages\EditVente::route('/{record}'),
         ];
     }
 
@@ -229,7 +229,7 @@ class AchatResource extends Resource
             ->relationship('produits')
             ->schema([
                 Forms\Components\Select::make('produit_id')
-                    ->label('Produit')
+                    ->label('Nom')
                     ->options(Produit::query()->pluck('nom', 'id'))
                     ->reactive()
                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
@@ -285,6 +285,7 @@ class AchatResource extends Resource
             ])
             ->defaultItems(1)
             ->hiddenLabel()
+            ->itemLabel(fn (int $index = 0) => "Produit " . ($index + 1))
             ->columns([
                 'md' => 10,
             ]);
@@ -326,7 +327,6 @@ class AchatResource extends Resource
 
     public static function getPaiementForm(): Forms\Components\Group
 {
-    $paliers = \App\Models\Credit::query()->orderBy('montant', 'desc')->get();
     return Forms\Components\Group::make()
         ->schema([
             Forms\Components\Section::make('Crédit')
@@ -335,9 +335,14 @@ class AchatResource extends Resource
                     Forms\Components\TextInput::make('nombre_credits')
                         ->label('Nombre de crédits à ajouter')
                         ->numeric()
-                        ->reactive()
                         ->default(0)
-                        ->hint(fn (Forms\Get $get) => self::calculPrixFrontend($get('nombre_credits'), $paliers)),
+                        ->minValue(0)
+                        ->hint(static::getHintHtml(
+                            \App\Models\Credit::query()
+                                ->orderBy('montant', 'desc')
+                                ->get(['montant', 'prix'])
+                                ->toArray()
+                        )),
 
                     KeyValue::make('services')
                 ->label('Services')
@@ -374,7 +379,7 @@ class AchatResource extends Resource
         $totalServices = (float) array_sum(array_map(fn ($s) => $s['selected'] ? $s['price'] : 0, $get('services') ?? []));
         $formule = (float) (Formule::find($get('formule_id'))?->prix ?? 0);
         $credits = (float) ($get('nombre_credits') ?? 0);
-        $prixCredits = (float) self::calculPrixFrontend($credits, \App\Models\Credit::query()->orderBy('montant', 'desc')->get());
+        $prixCredits = 0;
 
         // Calcul du total
         $totalGeneral = $totalProduits + $totalServices + $formule + $prixCredits;
@@ -399,21 +404,48 @@ class AchatResource extends Resource
         ->columns(2);
 }
 
-protected static function calculPrixFrontend(float $creditsDemandes, $paliers): string
+public static function getHintHtml(array $paliers): HtmlString
 {
-    $prixTotal = $creditsDemandes;
-    foreach ($paliers as $palier) {
-        if ($creditsDemandes >= $palier->montant) {
-            $reduction = $palier->montant - $palier->prix;
-            $prixTotal -= $reduction;
-            break;
-        }
-    }
-    return $creditsDemandes > 0
-        ? 'Prix total : ' . number_format(max($prixTotal, 0), 2) . ' €'
-        : 'Veuillez entrer le nombre de crédits.';
-}
+    $paliersJson = json_encode($paliers); // Encode les paliers en JSON pour les utiliser en JavaScript.
 
+    return new HtmlString("
+        <div>
+            <span id=\"hint_nombre_credits\">Veuillez entrer un nombre.</span>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const hintElement = document.getElementById('hint_nombre_credits');
+                    const nombreCreditsInput = document.getElementById('data.nombre_credits');
+
+                    if (!nombreCreditsInput || !hintElement) {
+                        console.error('L\'élément attendu n\'a pas été trouvé dans le DOM.');
+                        return;
+                    }
+
+                    const paliers = $paliersJson;
+
+                    function calculPrixFrontend(creditsDemandes) {
+                        let prixTotal = creditsDemandes;
+                        for (const palier of paliers) {
+                            if (creditsDemandes >= palier.montant) {
+                                const reduction = palier.montant - palier.prix;
+                                prixTotal -= reduction;
+                                break;
+                            }
+                        }
+                        return creditsDemandes > 0
+                            ? 'Prix total : ' + Math.max(prixTotal, 0).toFixed(2) + ' €'
+                            : 'Veuillez entrer un nombre de crédits.';
+                    }
+
+                    nombreCreditsInput.addEventListener('input', function () {
+                        const creditsDemandes = parseFloat(this.value) || 0;
+                        hintElement.innerHTML = calculPrixFrontend(creditsDemandes);
+                    });
+                });
+            </script>
+        </div>
+    ");
+}
 
 
 }
