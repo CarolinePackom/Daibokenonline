@@ -29,9 +29,10 @@ class NfcController extends Controller
     private function clientNfc($client){
         $client->update(['est_present' => !$client->est_present]);
         $this->stockageCache('dernier_client_nfc', [
-                'name' => $client->nom,
-                'surname' => $client->prenom,
-            ]);
+            'name' => $client->nom,
+            'surname' => $client->prenom,
+        ]);
+        
     }
 
     private function aucunClientNfc($IdNfc){

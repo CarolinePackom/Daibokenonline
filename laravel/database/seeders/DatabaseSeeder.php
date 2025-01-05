@@ -45,47 +45,47 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Formule::create([
-            'nom' => '2h',
+            'nom' => '2 Heures',
             'duree_en_heures' => 2,
             'prix' => 2.5,
         ]);
 
         Formule::create([
-            'nom' => '1/2 journée',
+            'nom' => '1/2 Journée',
             'duree_en_heures' => 4,
             'prix' => 4.5,
         ]);
 
         Formule::create([
-            'nom' => 'journée',
+            'nom' => '1 Journée',
             'duree_en_jours' => 1,
             'prix' => 7.5,
         ]);
 
         Formule::create([
-            'nom' => '1 semaine',
+            'nom' => '1 Semaine',
             'duree_en_jours' => 7,
             'prix' => 30,
         ]);
 
         Credit::create([
-            'montant' => 11,
-            'prix' => 10,
+            'montant' => 10,
+            'prix' => 9,
         ]);
 
         Credit::create([
-            'montant' => 27,
-            'prix' => 25,
+            'montant' => 25,
+            'prix' => 22,
         ]);
 
         Credit::create([
-            'montant' => 55,
-            'prix' => 50,
+            'montant' => 50,
+            'prix' => 45,
         ]);
 
         Credit::create([
-            'montant' => 120,
-            'prix' => 100,
+            'montant' => 100,
+            'prix' => 80,
         ]);
 
         Credit::create([

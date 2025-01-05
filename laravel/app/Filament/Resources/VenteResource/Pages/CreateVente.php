@@ -37,9 +37,9 @@ class CreateVente extends CreateRecord
                 ->schema([
                     Section::make()
                         ->schema(
-                            VenteResource::getDetailsFormSchema()
+                            VenteResource::getCreationFormSchema()
                         )
-                        ->columns(),
+                        ->columns(3),
                 ]),
 
             Step::make('Paiement')
@@ -52,26 +52,4 @@ class CreateVente extends CreateRecord
         ];
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        // Pré-remplir le client ID
-        $data['client_id'] = request()->get('client_id');
-
-        // Ajouter le produit prédéfini si le paramètre est présent
-        $produitId = request()->get('produit_id');
-        if ($produitId) {
-            $produit = \App\Models\Produit::find($produitId);
-            if ($produit) {
-                $data['produits'] = [
-                    [
-                        'produit_id' => $produitId,
-                        'quantite' => 1,
-                        'prix' => $produit->prix,
-                    ],
-                ];
-            }
-        }
-
-        return $data;
-    }
 }

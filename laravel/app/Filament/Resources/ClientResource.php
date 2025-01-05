@@ -86,25 +86,20 @@ class ClientResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nom_complet')
-                    ->label('Nom')
-                    ->getStateUsing(fn (Client $record) => ucfirst($record->prenom) . ' ' . ucfirst($record->nom))
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
                 Tables\Columns\ToggleColumn::make('est_present')
                     ->label('Présent')
                     ->sortable()
                     ->onColor('success')
                     ->offColor('danger'),
+                Tables\Columns\TextColumn::make('nom_complet')
+                    ->label('Nom')
+                    ->getStateUsing(fn (Client $record) => ucfirst($record->prenom) . ' ' . ucfirst($record->nom))
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('solde_credit')
                     ->label('Solde crédit')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('id_nfc')
-                    ->label('ID NFC')
-                    ->searchable(),
             ])
             ->filters([
                 //
@@ -114,7 +109,9 @@ class ClientResource extends Resource
             ])
             ->bulkActions([
                 //
-            ]);
+            ])
+            ->poll('2s')
+            ->defaultSort('est_present', 'desc');
     }
 
     public static function getRelations(): array

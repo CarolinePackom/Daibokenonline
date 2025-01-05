@@ -43,11 +43,11 @@ class CreditResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('prix')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('montant')
                     ->label('Montant crédité')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('prix')
                     ->numeric(),
             ])
             ->filters([

@@ -22,6 +22,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
+use PHPUnit\Metadata\Group;
 
 class VenteResource extends Resource
 {
@@ -35,41 +36,8 @@ class VenteResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Group::make()
-                    ->schema([
-                        Forms\Components\Section::make()
-                            ->schema(static::getDetailsFormSchema())
-                            ->columns(2),
-
-                        Forms\Components\Section::make('Order items')
-                            ->headerActions([
-                                Action::make('reset')
-                                    ->modalHeading('Are you sure?')
-                                    ->modalDescription('All existing items will be removed from the order.')
-                                    ->requiresConfirmation()
-                                    ->color('danger')
-                                    ->action(fn (Forms\Set $set) => $set('items', [])),
-                            ])
-                            ->schema([
-                                static::getProduitsRepeater(),
-                            ]),
-                    ])
-                    ->columnSpan(['lg' => fn (?Vente $record) => $record === null ? 3 : 2]),
-
-                Forms\Components\Section::make()
-                    ->schema([
-                        Forms\Components\Placeholder::make('created_at')
-                            ->label('Created at')
-                            ->content(fn (Vente $record): ?string => $record->created_at?->diffForHumans()),
-
-                        Forms\Components\Placeholder::make('updated_at')
-                            ->label('Last modified at')
-                            ->content(fn (Vente $record): ?string => $record->updated_at?->diffForHumans()),
-                    ])
-                    ->columnSpan(['lg' => 1])
-                    ->hidden(fn (?Vente $record) => $record === null),
-            ])
-            ->columns(3);
+                //
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -132,44 +100,141 @@ class VenteResource extends Resource
         ];
     }
 
-    public static function getDetailsFormSchema(): array
+    public static function getCreationFormSchema(): array
     {
+        $index = 0;
         return [
-            Forms\Components\Select::make('client_id')
-                ->label('Client')
-                ->options(
-                    fn () => Client::query()
-                        ->whereNull('archived_at')
-                        ->get()
-                        ->mapWithKeys(fn ($client) => [
-                            $client->id => ucfirst(strtolower($client->prenom)) . ' ' . ucfirst(strtolower($client->nom)),
-                        ])
-                )
-                ->searchable()
-                ->default(fn () => request('client_id'))
-                ->required()
-                ->placeholder('Sélectionnez un client'),
+            Forms\Components\Group::make()
+                ->schema([
+                    Forms\Components\Section::make('Client')
+                        ->schema([
+                            Forms\Components\Select::make('client_id')
+                                ->hiddenLabel()
+                                ->options(
+                                    fn () => Client::query()
+                                        ->whereNull('archived_at')
+                                        ->get()
+                                        ->mapWithKeys(fn ($client) => [
+                                            $client->id => ucfirst(strtolower($client->prenom)) . ' ' . ucfirst(strtolower($client->nom)),
+                                        ])
+                                )
+                                ->searchable()
+                                ->default(fn () => request('client_id'))
+                                ->required()
+                                ->placeholder('Sélectionnez un client')
+                        ]),
 
-            ToggleButtons::make('statut')
-                ->label('Statut')
-                ->options(
-                    collect(StatutEnum::cases())
-                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getLabel()])
-                        ->toArray()
-                )
-                ->colors(
-                    collect(StatutEnum::cases())
-                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getColor()])
-                        ->toArray()
-                )
-                ->icons(
-                    collect(StatutEnum::cases())
-                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getIcon()])
-                        ->toArray()
-                )
-                ->required()
-                ->inline()
-                ->default(StatutEnum::Pret->value),
+                    Repeater::make('produits')
+                        ->relationship('produits')
+                        ->schema([
+                            Forms\Components\Select::make('produit_id')
+                                ->label('Nom')
+                                ->options(Produit::query()->pluck('nom', 'id'))
+                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                    $prixUnitaire = Produit::find($state)?->prix ?? 0;
+                                    $quantite = $get('quantite') ?? 1;
+                                    $set('prix', $prixUnitaire * $quantite);
+                                })
+                                ->distinct()
+                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->columnSpan(['lg' => 2])
+                                ->searchable(),
+
+                            Forms\Components\TextInput::make('quantite')
+                                ->label('Quantité')
+                                ->numeric()
+                                ->default(1)
+                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                    $prixUnitaire = Produit::find($get('produit_id'))?->prix ?? 0;
+                                    $set('prix', $prixUnitaire * $state);
+                                })
+                                ->live(onBlur: true)
+                                ->columnSpan(['lg' => 1]),
+
+                            Forms\Components\TextInput::make('prix')
+                                ->label('Prix')
+                                ->disabled()
+                                ->dehydrated()
+                                ->numeric()
+                                ->default(0)
+                                ->columnSpan(['lg' => 1]),
+                        ])
+                        ->defaultItems(1)
+                        ->hiddenLabel()
+                        ->addActionLabel('Ajouter un produit')
+                        ->itemLabel("Produit")
+                        ->columns(4)
+                ])
+                ->columnSpan(['lg' => 2]),
+
+            Forms\Components\Group::make()
+                ->schema([
+                    Forms\Components\Section::make('Statut')
+                        ->schema([
+                            ToggleButtons::make('statut')
+                                ->hiddenLabel()
+                                ->options(
+                                    collect(StatutEnum::cases())
+                                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getLabel()])
+                                        ->toArray()
+                                )
+                                ->colors(
+                                    collect(StatutEnum::cases())
+                                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getColor()])
+                                        ->toArray()
+                                )
+                                ->icons(
+                                    collect(StatutEnum::cases())
+                                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getIcon()])
+                                        ->toArray()
+                                )
+                                ->required()
+                                ->inline()
+                                ->default(StatutEnum::Pret->value),
+
+
+                        ]),
+
+
+                        Forms\Components\Tabs::make()
+                            ->tabs([
+                                Forms\Components\Tabs\Tab::make('Formules')
+                                    ->schema([
+                                        Forms\Components\ToggleButtons::make('formule_id')
+                                            ->label('')
+                                            ->options(
+                                                Formule::query()
+                                                    ->pluck('nom', 'id')
+                                            )
+                                            ->gridDirection('row')
+                                            ->columns(2),
+                                    ]),
+
+                                Forms\Components\Tabs\Tab::make('Personnalisée')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('custom_duration')
+                                            ->label('Durée')
+                                            ->numeric()
+                                            ->columnSpan(1),
+
+                                        Forms\Components\ToggleButtons::make('custom_unit')
+                                            ->label('Unité')
+                                            ->options([
+                                                'heures' => 'Heures',
+                                                'jours' => 'Jours',
+                                            ])
+                                            ->inline()
+                                            ->default('heures')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columns(3),
+                            ]),
+
+                ])
+                ->columnSpan(['lg' => 1]),
+
+
+
 
 
             Forms\Components\Fieldset::make('Services')
@@ -210,119 +275,7 @@ class VenteResource extends Resource
                 })
                 ->columns(1) // Chaque service s'affiche sur une ligne
                 ->hidden(fn () => !request('service_ids')),
-
-            Forms\Components\Section::make('Produits')
-                ->schema([
-                    static::getProduitsRepeater(),
-                ]),
-
-            Forms\Components\Section::make('Formule')
-                ->schema([
-                    static::getFormuleForm(),
-                ]),
         ];
-    }
-
-    public static function getProduitsRepeater(): Repeater
-    {
-        return Repeater::make('produits')
-            ->relationship('produits')
-            ->schema([
-                Forms\Components\Select::make('produit_id')
-                    ->label('Nom')
-                    ->options(Produit::query()->pluck('nom', 'id'))
-                    ->reactive()
-                    ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                        $prixUnitaire = Produit::find($state)?->prix ?? 0;
-                        $quantite = $get('quantite') ?? 1;
-                        $set('prix', $prixUnitaire * $quantite);
-                    })
-                    ->distinct()
-                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                    ->columnSpan([
-                        'md' => 5,
-                    ])
-                    ->searchable(),
-
-                Forms\Components\TextInput::make('quantite')
-                    ->label('Quantité')
-                    ->numeric()
-                    ->default(1)
-                    ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                        $prixUnitaire = Produit::find($get('produit_id'))?->prix ?? 0;
-                        $set('prix', $prixUnitaire * $state);
-                    })
-                    ->columnSpan([
-                        'md' => 2,
-                    ]),
-
-                Forms\Components\TextInput::make('prix')
-                    ->label('Prix')
-                    ->disabled()
-                    ->dehydrated()
-                    ->numeric()
-                    ->default(0)
-                    ->columnSpan([
-                        'md' => 3,
-                    ]),
-            ])
-            ->extraItemActions([
-                Action::make('openProduct')
-                    ->tooltip('Open product')
-                    ->icon('heroicon-m-arrow-top-right-on-square')
-                    ->url(function (array $arguments, Repeater $component): ?string {
-                        $itemData = $component->getRawItemState($arguments['item']);
-
-                        $product = Produit::find($itemData['produit_id']);
-
-                        if (! $product) {
-                            return null;
-                        }
-
-                        return ProduitResource::getUrl('edit', ['record' => $product]);
-                    }, shouldOpenInNewTab: true)
-                    ->hidden(fn (array $arguments, Repeater $component): bool => blank($component->getRawItemState($arguments['item'])['produit_id'])),
-            ])
-            ->defaultItems(1)
-            ->hiddenLabel()
-            ->itemLabel(fn (int $index = 0) => "Produit " . ($index + 1))
-            ->columns([
-                'md' => 10,
-            ]);
-    }
-
-    public static function getFormuleForm(): Forms\Components\Group
-    {
-        return Forms\Components\Group::make()
-            ->schema([
-                Forms\Components\ToggleButtons::make('formule_id')
-                    ->label('')
-                    ->options(
-                        Formule::query()
-                            ->pluck('nom', 'id')
-                            ->toArray() + ['custom' => 'Personnalisée']
-                    )
-                    ->reactive()
-                    ->inline(),
-
-                Forms\Components\Group::make()
-                    ->schema([
-                        Forms\Components\TextInput::make('custom_value')
-                            ->label('Nombre')
-                            ->numeric()
-                            ->placeholder('Saisissez un nombre')
-                            ->required(),
-
-                        Forms\Components\ToggleButtons::make('custom_unit')
-                            ->label('Unité')
-                            ->options([
-                                'jours' => 'Jours',
-                                'heures' => 'Heures',
-                            ])
-                            ->inline(),
-                    ])
-                    ->visible(fn (Forms\Get $get) => $get('formule_id') === 'custom'),
-            ]);
     }
 
     public static function getPaiementForm(): Forms\Components\Group
