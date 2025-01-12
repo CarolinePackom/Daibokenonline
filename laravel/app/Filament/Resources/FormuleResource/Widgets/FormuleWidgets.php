@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Widgets;
+namespace App\Filament\Resources\FormuleResource\Widgets;
 
 use App\Models\Tarif;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;

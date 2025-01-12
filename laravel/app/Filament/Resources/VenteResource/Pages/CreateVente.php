@@ -3,6 +3,9 @@
 namespace App\Filament\Resources\VenteResource\Pages;
 
 use App\Filament\Resources\VenteResource;
+use App\Models\Client;
+use App\Models\Produit;
+use App\Models\Vente;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
@@ -50,6 +53,45 @@ class CreateVente extends CreateRecord
                         ]),
                 ]),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['user_id'] = auth()->id();
+
+        $serviceIds = isset($data['service_ids']) ? explode(',', $data['service_ids']) : [];
+        $serviceIds = array_filter($serviceIds, fn($id) => is_numeric($id)); // Filtrer les IDs numériques uniquement
+        unset($data['service_ids']);
+
+        $produits = $data['produits'] ?? [];
+        unset($data['produits']);
+
+        // Mise à jour des crédits du client
+        if ($data['moyen_paiement'] === 'credit') {
+            $client = Client::find($data['client_id']);
+            if ($client && $client->solde_credit >= $data['total']) {
+                $client->decrement('solde_credit', $data['total']);
+            }
+        }
+
+        // Création de la vente
+        $vente = Vente::create($data);
+
+        foreach ($produits as $produit) {
+    if (!empty($produit['produit_id']) && Produit::find($produit['produit_id'])) {
+        $vente->produits()->attach($produit['produit_id'], [
+            'quantite' => $produit['quantite'] ?? 1,
+        ]);
+    }
+}
+
+
+        // Ajout des services à la vente
+        foreach ($serviceIds as $serviceId) {
+            $vente->services()->attach((int) $serviceId); // Convertir chaque ID en entier
+        }
+
+        return $data;
     }
 
 }

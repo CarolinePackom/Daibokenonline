@@ -11,18 +11,17 @@ use App\Models\Formule;
 use App\Models\Produit;
 use App\Models\Service;
 use Filament\Forms;
-use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
-use PHPUnit\Metadata\Group;
+use Filament\Forms\Get;
 
 class VenteResource extends Resource
 {
@@ -106,10 +105,10 @@ class VenteResource extends Resource
         return [
             Forms\Components\Group::make()
                 ->schema([
-                    Forms\Components\Section::make('Client')
+                    Forms\Components\Section::make('')
                         ->schema([
                             Forms\Components\Select::make('client_id')
-                                ->hiddenLabel()
+                                ->label('Client')
                                 ->options(
                                     fn () => Client::query()
                                         ->whereNull('archived_at')
@@ -119,13 +118,13 @@ class VenteResource extends Resource
                                         ])
                                 )
                                 ->searchable()
+                                ->prefixIcon('heroicon-m-user')
                                 ->default(fn () => request('client_id'))
                                 ->required()
                                 ->placeholder('Sélectionnez un client')
                         ]),
 
                     Repeater::make('produits')
-                        ->relationship('produits')
                         ->schema([
                             Forms\Components\Select::make('produit_id')
                                 ->label('Nom')
@@ -138,6 +137,8 @@ class VenteResource extends Resource
                                 ->distinct()
                                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                 ->columnSpan(['lg' => 2])
+                                ->placeholder('Sélectionnez un produit')
+                                ->nullable()
                                 ->searchable(),
 
                             Forms\Components\TextInput::make('quantite')
@@ -162,6 +163,7 @@ class VenteResource extends Resource
                         ->defaultItems(1)
                         ->hiddenLabel()
                         ->addActionLabel('Ajouter un produit')
+                        ->reorderable(false)
                         ->itemLabel("Produit")
                         ->columns(4)
                 ])
@@ -207,6 +209,12 @@ class VenteResource extends Resource
                                                     ->pluck('nom', 'id')
                                             )
                                             ->gridDirection('row')
+                                            ->disabled(fn (Forms\Get $get) => $get('custom_duration') !== null && $get('custom_duration') > 0)
+                                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                                if ($state !== null) {
+                                                    $set('custom_duration', null);
+                                                }
+                                            })
                                             ->columns(2),
                                     ]),
 
@@ -215,6 +223,13 @@ class VenteResource extends Resource
                                         Forms\Components\TextInput::make('custom_duration')
                                             ->label('Durée')
                                             ->numeric()
+                                            ->reactive()
+                                            ->minValue(0)
+                                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                                if ($state !== null && $state !== '') {
+                                                    $set('formule_id', null);
+                                                }
+                                            })
                                             ->columnSpan(1),
 
                                         Forms\Components\ToggleButtons::make('custom_unit')
@@ -233,172 +248,234 @@ class VenteResource extends Resource
                 ])
                 ->columnSpan(['lg' => 1]),
 
+            Forms\Components\Hidden::make('service_ids')
+                ->default(fn () => request('service_ids', ''))
+                ->dehydrated(false),
 
+            Section::make('Services')
+                ->schema(function (Forms\Get $get, Forms\Set $set) {
+                    $serviceIds = explode(',', $get('service_ids') ?? '');
 
-
-
-            Forms\Components\Fieldset::make('Services')
-                ->schema(function () {
-                    $serviceIds = explode(',', request('service_ids', ''));
+                    if (empty($serviceIds)) {
+                        return [
+                            Placeholder::make('message')
+                                ->label('Aucun service sélectionné')
+                                ->content('Aucun service n\'a été trouvé.'),
+                        ];
+                    }
 
                     $services = Service::whereIn('id', $serviceIds)->get();
 
                     if ($services->isNotEmpty()) {
-                        return $services->map(function ($service) {
-                            return Forms\Components\Group::make()
-                                ->schema([
-                                    Forms\Components\Checkbox::make("services[{$service->id}][selected]")
-                                        ->label('')
-                                        ->default(true)
-                                        ->columnSpan(1),
-
-                                    Forms\Components\Placeholder::make("services[{$service->id}][name]")
-                                        ->label('')
-                                        ->content($service->nom)
-                                        ->columnSpan(3),
-
-                                    Forms\Components\Placeholder::make("services[{$service->id}][price]")
-                                        ->label('')
-                                        ->content(number_format($service->prix, 2) . ' €')
-                                        ->columnSpan(2),
-                                ])
-                                ->columns(6)
-                                ->inlineLabel(false);
+                        $keyValueData = $services->mapWithKeys(function ($service) {
+                            return [
+                                $service->nom => number_format($service->prix, 2) . ' €',
+                            ];
                         })->toArray();
+
+                        $total = $services->sum('prix');
+                        $set('placeholder_services_default', 'Services : ' . number_format($total, 2, ',') . ' €');
+
+                        return [
+                            KeyValue::make('services')
+                                ->hiddenLabel()
+                                ->default($keyValueData)
+                                ->addable(false)
+                                ->editableKeys(false)
+                                ->editableValues(false)
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    $total = array_sum(array_map(function ($value) {
+                                        return (float) str_replace([' €', ','], ['', '.'], $value);
+                                    }, $state ?? []));
+                                    $set('placeholder_services', 'Services : ' . number_format($total, 2, ',') . ' €');
+                                })
+                                ->keyLabel('Nom du service')
+                                ->valueLabel('Prix'),
+                        ];
                     }
 
                     return [
-                        Forms\Components\Placeholder::make('message')
+                        Placeholder::make('message')
                             ->label('Aucun service sélectionné')
                             ->content('Aucun service n\'a été trouvé.'),
                     ];
                 })
-                ->columns(1) // Chaque service s'affiche sur une ligne
-                ->hidden(fn () => !request('service_ids')),
+                ->hidden(fn (Forms\Get $get) => empty($get('service_ids')))
+                ->columns(1)
         ];
     }
 
     public static function getPaiementForm(): Forms\Components\Group
-{
-    return Forms\Components\Group::make()
-        ->schema([
-            Forms\Components\Section::make('Crédit')
-                ->schema([
+    {
+        return Forms\Components\Group::make()
+            ->schema([
+                Forms\Components\Section::make('Crédit')
+                    ->schema([
+                        Forms\Components\TextInput::make('nombre_credits')
+                            ->label('Nombre de crédits à ajouter')
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0)
+                            ->hint(static::getHintHtml(
+                                \App\Models\Credit::query()
+                                    ->orderBy('montant', 'desc')
+                                    ->get(['montant', 'prix'])
+                                    ->toArray()
+                            ))
+                            ->columnSpan(4),
 
-                    Forms\Components\TextInput::make('nombre_credits')
-                        ->label('Nombre de crédits à ajouter')
-                        ->numeric()
-                        ->default(0)
-                        ->minValue(0)
-                        ->hint(static::getHintHtml(
-                            \App\Models\Credit::query()
-                                ->orderBy('montant', 'desc')
-                                ->get(['montant', 'prix'])
-                                ->toArray()
-                        )),
+                        Forms\Components\Placeholder::make('solde_credit')
+                            ->label('Solde actuel')
+                            ->content(fn (Forms\Get $get) =>
+                                    Client::find($get('client_id'))?->solde_credit
+                                        ? number_format(Client::find($get('client_id'))?->solde_credit, 2, ',', ' ')
+                                        : '0,00'
+                                ),
+                    ])
+                    ->columns(5),
 
-                    KeyValue::make('services')
-                ->label('Services')
-                ->keyLabel('Nom du service')
-                ->valueLabel('Prix du service')
-                ->addActionLabel('Ajouter un service')
-                ->reorderable()
-                ->keyPlaceholder('Entrez le nom du service')
-                ->valuePlaceholder('Entrez le prix du service')
-                ->required(),
+                Forms\Components\Section::make('Paiement')
+                    ->schema([
+                        Forms\Components\Section::make()
+                            ->schema([
+                                Forms\Components\Placeholder::make('placeholder_produits')
+                                    ->hiddenLabel()
+                                    ->content(fn (Forms\Get $get) =>
+                                        'Produits : ' . (array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])) == 0
+                                        ? '0 €'
+                                        : number_format(array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])), 2, ',', '') . ' €')
+                                    ),
+                                Forms\Components\Placeholder::make('placeholder_services')
+                                    ->hiddenLabel()
+                                    ->content(fn (Forms\Get $get) => $get('placeholder_services'))
+                                    ->default(fn (Forms\Get $get) => $get('placeholder_services_default') ?? 'Services : 0 €'),
+                                Forms\Components\Placeholder::make('placeholder_formule')
+                                    ->hiddenLabel()
+                                    ->content(function (Forms\Get $get) {
+                                        $tarif = \App\Models\Tarif::first();
 
-                ]),
+                                        $formuleId = $get('formule_id');
+                                        if ($formuleId) {
+                                            $formule = \App\Models\Formule::find($formuleId);
+                                            return $formule ? "Formule : " . number_format($formule->prix, 2, ',') . " €" : 'Formule non valide';
+                                        }
 
-            Forms\Components\Section::make('Paiement')
-                ->schema([
+                                        $customDuration = $get('custom_duration');
+                                        $customUnit = $get('custom_unit');
+                                        if ($customDuration && $customUnit) {
+                                            $prixUnitaire = $customUnit === 'heures' ? $tarif->prix_une_heure : $tarif->prix_un_jour;
+                                            $total = $customDuration * $prixUnitaire;
+                                            return "Formule : " . number_format($total, 2, ',') . " €";
+                                        }
 
-                    Forms\Components\ToggleButtons::make('moyen_paiement')
-                        ->label('Moyen de paiement')
-                        ->options([
-                            'carte' => 'Carte bancaire',
-                            'espece' => 'Espèces',
-                            'credit' => 'Crédit',
-                        ])
-                        ->reactive()
-                        ->inline()
-                        ->visible(fn (Forms\Get $get) => $get('moyen_paiement') !== 'credit' || ($get('client_credit') >= $get('total'))),
+                                        return 'Formule : 0 €';
+                                    }),
+                                Placeholder::make('placeholder_credit')
+                                    ->hiddenLabel()
+                                    ->content('Crédit : 0 €'),
+                                Placeholder::make('placeholder_total')
+                                    ->hiddenLabel()
+                                    ->content('TOTAL : 0 €'),
+                            ])
+                            ->columnSpan(1),
 
+                        Forms\Components\Section::make('')
+                            ->schema([
+                                Forms\Components\ToggleButtons::make('moyen_paiement')
+                                    ->label('Moyen de paiement')
+                                    ->options([
+                                        'carte' => 'Carte bancaire',
+                                        'espece' => 'Espèces',
+                                        'credit' => 'Crédit',
+                                    ])
+                                    ->required()
+                                    ->visible(fn (Forms\Get $get) => $get('moyen_paiement') !== 'credit' || ($get('client_credit') >= $get('total'))),
+                            ])
+                            ->columnSpan(1),
+                    ])
+                    ->columns(2),
+            ]);
+    }
 
-                    Forms\Components\Placeholder::make('recapitulatif')
-    ->label('Récapitulatif')
-    ->content(function (Forms\Get $get): HtmlString {
-        // Récupération des montants
-        $totalProduits = (float) array_sum(array_column($get('produits') ?? [], 'prix'));
-        $totalServices = (float) array_sum(array_map(fn ($s) => $s['selected'] ? $s['price'] : 0, $get('services') ?? []));
-        $formule = (float) (Formule::find($get('formule_id'))?->prix ?? 0);
-        $credits = (float) ($get('nombre_credits') ?? 0);
-        $prixCredits = 0;
+    public static function getHintHtml(array $paliers): HtmlString
+    {
+        $paliersJson = json_encode($paliers);
+        $index = null;
+        $value = null;
 
-        // Calcul du total
-        $totalGeneral = $totalProduits + $totalServices + $formule + $prixCredits;
+        return new HtmlString("
+    <div>
+        <span id=\"hint_nombre_credits\">Prix : 0 €</span>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const hintElement = document.getElementById('hint_nombre_credits');
+            const nombreCreditsInput = document.getElementById('data.nombre_credits');
+            const placeholders = Array.from(document.querySelectorAll('.fi-fo-placeholder'));
+            const placeholdersExceptLast = placeholders.slice(0, -1);
 
-        // Récapitulatif formaté en HTML
-        $html = "
-            <ul>
-                <li>Services : " . number_format($totalServices, 2) . " €</li>
-                <li>Produits : " . number_format($totalProduits, 2) . " €</li>
-                <li>Formule : " . number_format($formule, 2) . " €</li>
-                <li>Crédit : " . number_format($prixCredits, 2) . " €</li>
-            </ul>
-            <p><strong>Total : " . number_format($totalGeneral, 2) . " €</strong></p>
-        ";
+            let total = 0;
+            let paliers = $paliersJson;
 
-        return new HtmlString($html);
+            nombreCreditsInput.addEventListener('input', update);
 
-                        }),
-                ])
+            setInterval(update, 500);
 
-        ])
-        ->columns(2);
+            function update(){
+                updateHint();
+                updatePlaceholderCredit();
+                updatePlaceholderTotal();
+            }
+
+            function updateHint() {
+                hintElement.innerHTML = 'Prix : ' + calculPrixCredit() + ' €';
+            }
+
+            function updatePlaceholderCredit() {
+                let totalCredits = calculPrixCredit();
+
+                const creditPlaceholder = document.querySelector('[for=\'data.placeholder_credit\']').nextElementSibling.querySelector('.fi-fo-placeholder');
+                if (creditPlaceholder) {
+                    creditPlaceholder.textContent = 'Crédit : ' + totalCredits + ' €';
+                }
+            }
+
+            function updatePlaceholderTotal(){
+                const total = calculTotal();
+
+                const totalPlaceholder = document.querySelector('[for=\'data.placeholder_total\']').nextElementSibling.querySelector('.fi-fo-placeholder');
+                if (totalPlaceholder) {
+                    totalPlaceholder.innerHTML = '<strong>TOTAL : ' + total.toFixed(2).replace('.', ',') + ' €</strong>';
+                }
+            }
+
+            function calculPrixCredit() {
+                let creditsDemandes = parseFloat(nombreCreditsInput.value) || 0;
+                let prixTotal = creditsDemandes;
+                for (const palier of paliers) {
+                    if (creditsDemandes >= palier.montant) {
+                        const reduction = palier.montant - palier.prix;
+                        prixTotal -= reduction;
+                        break;
+                    }
+                }
+                return creditsDemandes > 0 ? Math.max(prixTotal, 0).toFixed(2).replace('.', ',') : 0;
+            }
+
+            function calculTotal() {
+    let total = 0;
+    placeholdersExceptLast.forEach((placeholder) => {
+        const text = placeholder.textContent.trim();
+        const match = text.match(/[\d,\.]+/);
+        if (match) {
+            total += parseFloat(match[0].replace(',', '.'));
+        }
+    });
+    return parseFloat(total);
 }
 
-public static function getHintHtml(array $paliers): HtmlString
-{
-    $paliersJson = json_encode($paliers); // Encode les paliers en JSON pour les utiliser en JavaScript.
-
-    return new HtmlString("
-        <div>
-            <span id=\"hint_nombre_credits\">Veuillez entrer un nombre.</span>
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    const hintElement = document.getElementById('hint_nombre_credits');
-                    const nombreCreditsInput = document.getElementById('data.nombre_credits');
-
-                    if (!nombreCreditsInput || !hintElement) {
-                        console.error('L\'élément attendu n\'a pas été trouvé dans le DOM.');
-                        return;
-                    }
-
-                    const paliers = $paliersJson;
-
-                    function calculPrixFrontend(creditsDemandes) {
-                        let prixTotal = creditsDemandes;
-                        for (const palier of paliers) {
-                            if (creditsDemandes >= palier.montant) {
-                                const reduction = palier.montant - palier.prix;
-                                prixTotal -= reduction;
-                                break;
-                            }
-                        }
-                        return creditsDemandes > 0
-                            ? 'Prix total : ' + Math.max(prixTotal, 0).toFixed(2) + ' €'
-                            : 'Veuillez entrer un nombre de crédits.';
-                    }
-
-                    nombreCreditsInput.addEventListener('input', function () {
-                        const creditsDemandes = parseFloat(this.value) || 0;
-                        hintElement.innerHTML = calculPrixFrontend(creditsDemandes);
-                    });
-                });
-            </script>
-        </div>
-    ");
+        });
+    </script>
+");
 }
-
-
 }

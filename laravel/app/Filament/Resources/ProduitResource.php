@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProduitResource\Pages;
 use App\Filament\Resources\ProduitResource\RelationManagers;
-use App\Filament\Widgets\ProduitWidgets;
 use App\Models\Produit;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
@@ -110,13 +109,6 @@ class ProduitResource extends Resource
             'index' => Pages\ListProduits::route('/'),
             'create' => Pages\CreateProduit::route('/create'),
             'edit' => Pages\EditProduit::route('/{record}'),
-        ];
-    }
-
-    public static function getWidgets(): array
-    {
-        return [
-            ProduitWidgets::class,
         ];
     }
 

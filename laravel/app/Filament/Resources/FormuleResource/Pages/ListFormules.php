@@ -3,12 +3,11 @@
 namespace App\Filament\Resources\FormuleResource\Pages;
 
 use App\Filament\Resources\FormuleResource;
-use App\Filament\Widgets\FormuleWidgets;
+use App\Filament\Resources\FormuleResource\Widgets\FormuleWidgets;
 use App\Models\Tarif;
 use Filament\Actions;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\ListRecords;
-use Livewire\Livewire;
 
 class ListFormules extends ListRecords
 {

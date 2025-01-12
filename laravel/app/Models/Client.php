@@ -19,4 +19,19 @@ class Client extends Model
         'solde_credit',
         'archived_at',
     ];
+
+    public function decrementCredit(float $montant): void
+    {
+        $this->decrement('solde_credit', $montant);
+    }
+
+    public function incrementCredit(float $montant): void
+    {
+        $this->increment('solde_credit', $montant);
+    }
+
+    public function ordinateur()
+    {
+        return $this->hasOne(Ordinateur::class);
+    }
 }

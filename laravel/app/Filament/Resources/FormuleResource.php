@@ -4,22 +4,19 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormuleResource\Pages;
 use App\Filament\Resources\FormuleResource\RelationManagers;
-use App\Filament\Widgets\FormuleWidgets;
+use App\Filament\Resources\FormuleResource\Widgets\FormuleWidgets;
 use App\Models\Formule;
-use App\Models\Tarif;
 use Filament\Forms;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 
 class FormuleResource extends Resource
 {
     protected static ?string $model = Formule::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+    protected static ?string $navigationIcon = 'heroicon-o-ticket';
 
     protected static ?int $navigationSort = 2;
 
