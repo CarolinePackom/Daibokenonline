@@ -14,8 +14,10 @@ return new class extends Migration
         Schema::create('ordinateurs', function (Blueprint $table) {
             $table->id();
             $table->string('nom');
-            $table->boolean('en_service')->default(true);
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
+            $table->string('adresse_ip')->unique();
+            $table->boolean('est_allumé')->default(true);
+            $table->boolean('en_maintenance')->default(false);
+            $table->timestamp('last_update')->nullable();
             $table->timestamps();
         });
     }

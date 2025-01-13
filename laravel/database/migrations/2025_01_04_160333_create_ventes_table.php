@@ -23,9 +23,7 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
 
             // Paiement
-            $table->boolean('est_paye')->default(false);
             $table->enum('moyen_paiement', ['carte', 'espece', 'credit', 'autre'])->nullable();
-            $table->decimal('total', 8, 2)->nullable();
 
             // Crédits
             $table->integer('nombre_credits')->default(0);

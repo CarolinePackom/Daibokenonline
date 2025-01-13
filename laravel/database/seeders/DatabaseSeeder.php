@@ -6,6 +6,7 @@ use App\Enums\StatutEnum;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\Formule;
+use App\Models\Ordinateur;
 use App\Models\Service;
 use App\Models\Statut;
 use App\Models\Tarif;
@@ -91,6 +92,66 @@ class DatabaseSeeder extends Seeder
         Credit::create([
             'montant' => 250,
             'prix' => 200,
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 1',
+            'adresse_ip' => '192.168.1.1',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 2',
+            'adresse_ip' => '192.168.1.2',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 3',
+            'adresse_ip' => '192.168.1.3',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 4',
+            'adresse_ip' => '192.168.1.4',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 5',
+            'adresse_ip' => '192.168.1.5',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 6',
+            'adresse_ip' => '192.168.1.6',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 7',
+            'adresse_ip' => '192.168.1.7',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 8',
+            'adresse_ip' => '192.168.1.8',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 9',
+            'adresse_ip' => '192.168.1.9',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
+            'nom' => 'PC 10',
+            'adresse_ip' => '192.168.1.10',
+            'last_update' => now(),
         ]);
 
         Client::create([

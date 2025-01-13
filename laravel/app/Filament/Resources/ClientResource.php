@@ -5,12 +5,17 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
+use App\Models\HistoriqueOrdinateur;
+use App\Models\Ordinateur;
 use Filament\Forms;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ClientResource extends Resource
 {
@@ -86,16 +91,63 @@ class ClientResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ToggleColumn::make('est_present')
-                    ->label('Présent')
-                    ->sortable()
-                    ->onColor('success')
-                    ->offColor('danger'),
                 Tables\Columns\TextColumn::make('nom_complet')
                     ->label('Nom')
                     ->getStateUsing(fn (Client $record) => ucfirst($record->prenom) . ' ' . ucfirst($record->nom))
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\ToggleColumn::make('est_present')
+                    ->label('Présent')
+                    ->sortable()
+                    ->onColor('success')
+                    ->offColor('danger')
+                    ->updateStateUsing(function (Model $record, bool $state) {
+                        $record->update(['est_present' => $state]);
+
+                        if (!$state) {
+                            $record->deconnecterOrdinateur();
+                        }
+                    }),
+
+                Tables\Columns\SelectColumn::make('ordinateur_id')
+    ->label('Ordinateur')
+    ->options(function (Client $record) {
+        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
+            ->where('client_id', '!=', $record->id)
+            ->pluck('ordinateur_id')
+            ->toArray();
+
+        return [
+            null => 'Aucun ordinateur',
+        ] + Ordinateur::where('est_allumé', true)
+            ->where('en_maintenance', false)
+            ->whereNotIn('id', $ordinateursUtilises) // Exclure les ordinateurs utilisés
+            ->pluck('nom', 'id')
+            ->toArray();
+    })
+    ->updateStateUsing(function (Client $record, $state) {
+        if ($state) {
+            // Si un ordinateur est sélectionné
+            $record->connecterOrdinateur($state);
+        } else {
+            // Si aucun ordinateur n'est sélectionné
+            $record->deconnecterOrdinateur();
+        }
+    })
+    ->default(null) // Par défaut, aucun ordinateur sélectionné
+    ->selectablePlaceholder(false) // Pas de placeholder
+    ->disabled(fn (?Client $record) => !$record->est_present) // Désactiver si le client n'est pas présent
+    ->getStateUsing(function (Client $record) {
+        // Récupérer l'ordinateur actuellement utilisé par ce client
+        $historique = $record->historiqueOrdinateurs()
+            ->whereNull('fin_utilisation')
+            ->first();
+
+        return $historique ? $historique->ordinateur_id : null;
+    }),
+
+
                 Tables\Columns\TextColumn::make('solde_credit')
                     ->label('Solde crédit')
                     ->numeric()
@@ -105,10 +157,16 @@ class ClientResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\Action::make('vendre')
+                    ->url(function (Model $record) {
+                        session()->put('previous_previous_url', url()->previous());
+
+                        return route('filament.admin.resources.ventes.create', ['client_id' => $record->id]);
+                    })
+                    ->button()
+                    ->hiddenLabel()
+                    ->icon('heroicon-o-shopping-bag'),
                 Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                //
             ])
             ->poll('2s')
             ->defaultSort('est_present', 'desc');

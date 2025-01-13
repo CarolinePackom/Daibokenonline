@@ -17,13 +17,24 @@ class OrdinateurResource extends Resource
 {
     protected static ?string $model = Ordinateur::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+
+    protected static ?int $navigationSort = 6;
+
+    protected static ?string $navigationGroup = 'Gestion';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                //
+                Forms\Components\TextInput::make('nom')
+                    ->label('Nom')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('adresse_ip')
+                    ->label('Adresse IP')
+                    ->required()
+                    ->unique(),
             ]);
     }
 
@@ -31,35 +42,68 @@ class OrdinateurResource extends Resource
     {
         return $table
             ->columns([
-                //
-            ])
-            ->filters([
-                //
+                Tables\Columns\TextColumn::make('nom'),
+                Tables\Columns\ToggleColumn::make('est_allumé')
+                    ->label('Allumé')
+                    ->sortable()
+                    ->onColor('success')
+                    ->offColor('danger'),
+                Tables\Columns\IconColumn::make('en_maintenance')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('last_update')
+                    ->label('Dernière mise à jour')
+                    ->since()
+                    ->dateTimeTooltip()
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\Action::make('mettre_a_jour')
+                    ->label('Mettre à jour')
+                    ->button()
+                    ->color('gray'),
                 Tables\Actions\EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->headerActions([
+                Tables\Actions\Action::make('tout_allumer')
+                    ->label('Tout allumer')
+                    ->color('success')
+                    ->action(function () {
+                        Ordinateur::where('est_allumé', false)->update(['est_allumé' => true]);
+                    }),
+
+                Tables\Actions\Action::make('tout_eteindre')
+                    ->label('Tout éteindre')
+                    ->color('danger')
+                    ->action(function () {
+                        Ordinateur::where('est_allumé', true)->update(['est_allumé' => false]);
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmation')
+                    ->modalDescription('Êtes-vous sûr de vouloir éteindre tous les ordinateurs ?'),
+
+                Tables\Actions\Action::make('tout_mettre_a_jour')
+                    ->label('Tout mettre à jour')
+                    ->color('gray'),
+            ])
+            ->paginated(false);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\HistoriqueOrdinateursRelationManager::class,
         ];
+    }
+
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) Ordinateur::query()->where('est_allumé', true)->count();
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListOrdinateurs::route('/'),
-            'create' => Pages\CreateOrdinateur::route('/create'),
-            'view' => Pages\ViewOrdinateur::route('/{record}'),
             'edit' => Pages\EditOrdinateur::route('/{record}/edit'),
         ];
     }

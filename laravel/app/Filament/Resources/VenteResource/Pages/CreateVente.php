@@ -94,4 +94,11 @@ class CreateVente extends CreateRecord
         return $data;
     }
 
+    protected function getRedirectUrl(): string
+    {
+        $previousUrl = session()->pull('previous_previous_url', VenteResource::getUrl('index'));
+
+        return $previousUrl;
+    }
+
 }

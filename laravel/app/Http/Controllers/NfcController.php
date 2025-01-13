@@ -26,14 +26,21 @@ class NfcController extends Controller
         }
     }
 
-    private function clientNfc($client){
+    private function clientNfc($client)
+    {
+        $wasPresent = $client->est_present;
         $client->update(['est_present' => !$client->est_present]);
+
+        if ($wasPresent) {
+            $client->deconnecterOrdinateur();
+        }
+
         $this->stockageCache('dernier_client_nfc', [
             'name' => $client->nom,
             'surname' => $client->prenom,
         ]);
-        
     }
+
 
     private function aucunClientNfc($IdNfc){
         $this->stockageCache('dernier_id_nfc', $IdNfc);

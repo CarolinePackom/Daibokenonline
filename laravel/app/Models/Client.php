@@ -18,6 +18,7 @@ class Client extends Model
         'id_nfc',
         'solde_credit',
         'archived_at',
+        'ordinateur_id',
     ];
 
     public function decrementCredit(float $montant): void
@@ -30,8 +31,36 @@ class Client extends Model
         $this->increment('solde_credit', $montant);
     }
 
-    public function ordinateur()
+    public function historiqueOrdinateurs()
     {
-        return $this->hasOne(Ordinateur::class);
+        return $this->hasMany(HistoriqueOrdinateur::class);
     }
+
+    public function connecterOrdinateur(int $ordinateurId): void
+    {
+        $ordinateur = Ordinateur::findOrFail($ordinateurId);
+
+        if ($ordinateur->en_maintenance || !$ordinateur->est_allumé) {
+            throw new \Exception('Ordinateur indisponible.');
+        }
+
+        HistoriqueOrdinateur::create([
+            'client_id' => $this->id,
+            'ordinateur_id' => $ordinateurId,
+            'debut_utilisation' => now(),
+        ]);
+    }
+
+    public function deconnecterOrdinateur(): void
+    {
+        $historique = HistoriqueOrdinateur::where('client_id', $this->id)
+            ->whereNull('fin_utilisation')
+            ->first();
+
+        if ($historique) {
+            $historique->update(['fin_utilisation' => now()]);
+        }
+    }
+
+
 }

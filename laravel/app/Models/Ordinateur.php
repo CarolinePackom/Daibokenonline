@@ -12,11 +12,11 @@ class Ordinateur extends Model
     protected $fillable = [
         'nom',
         'en_service',
-        'client_id',
     ];
 
-    public function client()
+    public function historiqueClients()
     {
-        return $this->belongsTo(Client::class);
+        return $this->hasMany(HistoriqueOrdinateur::class);
     }
+
 }

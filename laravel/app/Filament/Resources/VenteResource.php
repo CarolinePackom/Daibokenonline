@@ -99,9 +99,9 @@ class VenteResource extends Resource
         ];
     }
 
-    public static function getCreationFormSchema(): array
+    public static function getCreationFormSchema(?int $clientId = null): array
     {
-        $index = 0;
+        $resolvedClientId = request('client_id') ?? $clientId;
         return [
             Forms\Components\Group::make()
                 ->schema([
@@ -119,7 +119,8 @@ class VenteResource extends Resource
                                 )
                                 ->searchable()
                                 ->prefixIcon('heroicon-m-user')
-                                ->default(fn () => request('client_id'))
+                                ->default($resolvedClientId)
+                                ->disabled($resolvedClientId !== null)
                                 ->required()
                                 ->placeholder('Sélectionnez un client')
                         ]),
