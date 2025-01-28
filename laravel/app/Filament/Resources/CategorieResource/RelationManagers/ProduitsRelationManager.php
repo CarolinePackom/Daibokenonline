@@ -1,34 +1,30 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Resources\CategorieResource\RelationManagers;
 
-use App\Filament\Resources\ProduitResource\Pages;
-use App\Filament\Resources\ProduitResource\RelationManagers;
-use App\Models\Produit;
+use Filament\Forms;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class ProduitResource extends Resource
+class ProduitsRelationManager extends RelationManager
 {
-    protected static ?string $model = Produit::class;
+    protected static string $relationship = 'produits';
 
-    protected static ?string $navigationGroup = 'En vente';
+    protected static ?string $recordTitleAttribute = 'nom';
 
-    protected static ?int $navigationSort = 3;
-
-    protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
-
-    public static function form(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -65,7 +61,7 @@ class ProduitResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
             ->columns([
@@ -87,33 +83,12 @@ class ProduitResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                //
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListProduits::route('/'),
-            'create' => Pages\CreateProduit::route('/create'),
-            'edit' => Pages\EditProduit::route('/{record}'),
-        ];
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return (string) Produit::query()->where('en_vente', true)->count();
     }
 }

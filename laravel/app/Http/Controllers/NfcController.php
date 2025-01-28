@@ -36,8 +36,7 @@ class NfcController extends Controller
         }
 
         $this->stockageCache('dernier_client_nfc', [
-            'name' => $client->nom,
-            'surname' => $client->prenom,
+            'prenom' => $client->prenom,
         ]);
     }
 
@@ -70,8 +69,7 @@ class NfcController extends Controller
     {
         $this->startSse('dernier_client_nfc', function ($cachedData) {
             return [
-                'name' => $cachedData['name'],
-                'surname' => $cachedData['surname'],
+                'prenom' => $cachedData['prenom'],
             ];
         });
     }
