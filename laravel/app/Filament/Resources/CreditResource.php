@@ -19,7 +19,7 @@ class CreditResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-euro';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $navigationGroup = 'Gestion';
 
@@ -48,17 +48,17 @@ class CreditResource extends Resource
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('prix')
+                    ->label('Prix (€)')
                     ->numeric(),
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ])
+            ->paginated(false);
     }
 
     public static function getRelations(): array

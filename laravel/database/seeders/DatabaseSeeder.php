@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\StatutEnum;
+use App\Models\Categorie;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\Formule;
@@ -152,6 +153,76 @@ class DatabaseSeeder extends Seeder
             'nom' => 'PC 10',
             'adresse_ip' => '192.168.1.10',
             'last_update' => now(),
+        ]);
+
+        Categorie::create([
+            'nom' => 'Sodas',
+            'icone' => 'fas-bottle-water'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Boissons chaudes',
+            'icone' => 'fas-mug-hot'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Végans',
+            'icone' => 'fas-seedling'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Pimentés',
+            'icone' => 'fas-pepper-hot'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Desserts',
+            'icone' => 'fas-ice-cream'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Snacks',
+            'icone' => 'fas-cookie'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Fruits',
+            'icone' => 'fas-apple-whole'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Poissons',
+            'icone' => 'fas-fish'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Fruits de mer',
+            'icone' => 'fas-shrimp'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Poulets',
+            'icone' => 'fas-drumstick-bite'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Légumes',
+            'icone' => 'fas-carrot'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Fromages',
+            'icone' => 'fas-cheese'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Charcuteries',
+            'icone' => 'fas-bacon'
+        ]);
+
+        Categorie::create([
+            'nom' => 'Bonbons',
+            'icone' => 'fas-candy-cane'
         ]);
 
         Client::create([

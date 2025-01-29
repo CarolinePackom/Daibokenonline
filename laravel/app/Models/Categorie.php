@@ -12,8 +12,8 @@ class Categorie extends Model
     ];
 
     public function produits()
-{
-    return $this->hasMany(Produit::class, 'categorie_id');
-}
+    {
+        return $this->belongsToMany(Produit::class, 'categorie_produit')->withTimestamps();
+    }
 
 }

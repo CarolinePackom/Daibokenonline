@@ -15,9 +15,9 @@ class Produit extends Model implements HasMedia
         'nom',
         'prix',
         'en_vente',
-        'categorie_id',
         'quantite_stock',
         'seuil_quantite_alerte',
+        'description',
     ];
 
     public function estEnAlerteStock()
@@ -25,10 +25,10 @@ class Produit extends Model implements HasMedia
         return $this->quantite_stock <= $this->seuil_quantite_alerte;
     }
 
-    public function categorie()
-{
-    return $this->belongsTo(Categorie::class, 'categorie_id');
-}
+    public function categories()
+    {
+        return $this->belongsToMany(Categorie::class, 'categorie_produit')->withTimestamps();
+    }
 
 
     public function ventes()

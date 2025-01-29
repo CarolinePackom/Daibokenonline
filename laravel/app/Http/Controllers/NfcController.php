@@ -34,10 +34,11 @@ class NfcController extends Controller
         if ($wasPresent) {
             $client->deconnecterOrdinateur();
         }
-
-        $this->stockageCache('dernier_client_nfc', [
-            'prenom' => $client->prenom,
-        ]);
+        else {
+            $this->stockageCache('dernier_client_nfc', [
+                'prenom' => $client->prenom,
+            ]);
+        }
     }
 
 

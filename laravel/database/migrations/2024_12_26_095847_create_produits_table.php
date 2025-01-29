@@ -17,12 +17,13 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->decimal('prix', 8, 2);
             $table->boolean('en_vente')->default(true);
+            $table->text('description')->nullable();
+            $table->boolean('est_commandable_sur_le_logiciel')->default(true);
 
             // Gestion du stock
             $table->integer('quantite_stock')->default(0);
             $table->integer('seuil_quantite_alerte')->default(0);
 
-            $table->foreignId('categorie_id')->constrained('categories')->onDelete('cascade');
             $table->timestamps();
         });
     }

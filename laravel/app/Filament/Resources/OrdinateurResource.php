@@ -19,7 +19,7 @@ class OrdinateurResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 7;
 
     protected static ?string $navigationGroup = 'Gestion';
 
@@ -27,15 +27,28 @@ class OrdinateurResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nom')
-                    ->label('Nom')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('adresse_ip')
-                    ->label('Adresse IP')
-                    ->required()
-                    ->unique(),
-            ]);
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\TextInput::make('nom')
+                        ->label('Nom')
+                        ->required()
+                        ->maxLength(255),
+                        Forms\Components\TextInput::make('adresse_ip')
+                            ->label('Adresse IP')
+                            ->required()
+                            ->unique(),
+                    ])
+            ->columnSpan(1),
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\Toggle::make('en_maintenance')
+                            ->label('En maintenance')
+                            ->helperText("L'ordinateur ne sera pas utilisable pendant la maintenance.")
+                            ->default(false),
+                    ])
+                ->columnSpan(1),
+            ])
+            ->columns(2);
     }
 
     public static function table(Table $table): Table
@@ -48,6 +61,18 @@ class OrdinateurResource extends Resource
                     ->sortable()
                     ->onColor('success')
                     ->offColor('danger'),
+                Tables\Columns\TextColumn::make('client.nom_complet')
+                    ->label('Client actuel')
+                    ->getStateUsing(function ($record) {
+                        $historique = $record->historiqueClients()
+                            ->whereNull('fin_utilisation')
+                            ->with('client')
+                            ->first();
+                        if ($historique?->client) {
+                            return $historique->client->prenom . ' ' . $historique->client->nom;
+                        }
+                        return 'Aucun';
+                    }),
                 Tables\Columns\IconColumn::make('en_maintenance')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('last_update')
@@ -60,7 +85,6 @@ class OrdinateurResource extends Resource
                     ->label('Mettre à jour')
                     ->button()
                     ->color('gray'),
-                Tables\Actions\EditAction::make(),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('tout_allumer')
@@ -84,7 +108,8 @@ class OrdinateurResource extends Resource
                     ->label('Tout mettre à jour')
                     ->color('gray'),
             ])
-            ->paginated(false);
+            ->paginated(false)
+            ->poll('2s');
     }
 
     public static function getRelations(): array
@@ -93,7 +118,6 @@ class OrdinateurResource extends Resource
             RelationManagers\HistoriqueOrdinateursRelationManager::class,
         ];
     }
-
 
     public static function getNavigationBadge(): ?string
     {

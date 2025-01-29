@@ -18,13 +18,13 @@ class CategorieResource extends Resource
 {
     protected static ?string $model = Categorie::class;
 
-    protected static ?string $navigationGroup = 'En vente';
+    protected static ?string $navigationGroup = 'Gestion';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 5;
 
-    protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
+    protected static ?string $navigationIcon = 'heroicon-o-wallet';
 
-    protected static ?string $navigationLabel = 'Produits';
+    protected static ?string $label = 'Catégories des produits';
 
     public static function form(Form $form): Form
     {
@@ -36,7 +36,8 @@ class CategorieResource extends Resource
                 IconPicker::make('icone')
                     ->label('Icône')
                     ->required()
-                    ->columns(3),
+                    ->columns(3)
+                    ->sets(['fontawesome-solid']),
             ]);
     }
 
@@ -45,11 +46,11 @@ class CategorieResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\IconColumn::make('icone')
-                    ->label('Icône')
+                    ->label('')
                     ->icon(fn ($state) => $state)
-                    ->size('lg'),
+                    ->grow(false),
                 Tables\Columns\TextColumn::make('nom')
-                    ->searchable(),
+                ->label(''),
             ])
             ->filters([
                 //
@@ -59,7 +60,8 @@ class CategorieResource extends Resource
             ])
             ->bulkActions([
                 //
-            ]);
+            ])
+            ->paginated(false);
     }
 
     public static function getRelations(): array
@@ -67,6 +69,11 @@ class CategorieResource extends Resource
         return [
             RelationManagers\ProduitsRelationManager::class,
         ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) Categorie::query()->count();
     }
 
     public static function getPages(): array
