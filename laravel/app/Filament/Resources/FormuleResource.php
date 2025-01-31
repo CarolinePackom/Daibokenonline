@@ -34,25 +34,33 @@ class FormuleResource extends Resource
                         Forms\Components\TextInput::make('prix')
                             ->required()
                             ->numeric(),
-                    ]),
+                    ])
+                    ->columns(2)
+                    ->columnSpan(2),
 
                 Forms\Components\Section::make('Durée')
+                    ->description('Remplissez soit la durée en heures, soit la durée en jours. L’autre champ sera automatiquement désactivé.')
                     ->schema([
                         Forms\Components\TextInput::make('duree_en_heures')
-                            ->label('Durée en heures')
+                            ->label("Nombre d'heures")
                             ->numeric()
                             ->reactive()
                             ->default(null)
-                            ->disabled(fn ($get) => !empty($get('duree_en_jours'))),
+                            ->afterStateUpdated(fn ($state, $set) => $set('duree_en_jours', null))
+                            ->disabled(fn ($get) => !empty($get('duree_en_jours')))
+                            ->required(fn ($get) => empty($get('duree_en_jours'))),
                         Forms\Components\TextInput::make('duree_en_jours')
-                            ->label('Durée en jours')
+                            ->label('Nombre de jours')
                             ->numeric()
                             ->default(null)
                             ->reactive()
-                            ->disabled(fn ($get) => !empty($get('duree_en_heures'))),
-                    ]),
+                            ->afterStateUpdated(fn ($state, $set) => $set('duree_en_heures', null))
+                            ->disabled(fn ($get) => !empty($get('duree_en_heures')))
+                            ->required(fn ($get) => empty($get('duree_en_heures'))),
+                    ])
+                    ->columnSpan(1),
             ])
-            ->columns(2);
+            ->columns(3);
     }
 
     public static function table(Table $table): Table
