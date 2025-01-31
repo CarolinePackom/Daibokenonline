@@ -51,7 +51,8 @@ class FormuleResource extends Resource
                             ->reactive()
                             ->disabled(fn ($get) => !empty($get('duree_en_heures'))),
                     ]),
-            ]);
+            ])
+            ->columns(2);
     }
 
     public static function table(Table $table): Table
