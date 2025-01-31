@@ -26,20 +26,31 @@ class FormuleResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nom')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('duree_en_heures')
-                    ->label('Durée en heures')
-                    ->numeric()
-                    ->default(null),
-                Forms\Components\TextInput::make('duree_en_jours')
-                    ->label('Durée en jours')
-                    ->numeric()
-                    ->default(null),
-                Forms\Components\TextInput::make('prix')
-                    ->required()
-                    ->numeric(),
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\TextInput::make('nom')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('prix')
+                            ->required()
+                            ->numeric(),
+                    ]),
+
+                Forms\Components\Section::make('Durée')
+                    ->schema([
+                        Forms\Components\TextInput::make('duree_en_heures')
+                            ->label('Durée en heures')
+                            ->numeric()
+                            ->reactive()
+                            ->default(null)
+                            ->disabled(fn ($get) => !empty($get('duree_en_jours'))),
+                        Forms\Components\TextInput::make('duree_en_jours')
+                            ->label('Durée en jours')
+                            ->numeric()
+                            ->default(null)
+                            ->reactive()
+                            ->disabled(fn ($get) => !empty($get('duree_en_heures'))),
+                    ]),
             ]);
     }
 
