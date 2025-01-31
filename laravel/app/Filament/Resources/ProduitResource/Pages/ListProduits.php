@@ -31,7 +31,7 @@ class ListProduits extends ListRecords
                 ->badgeColor('success'),
             'Non commercialisé' => Tab::make()
                 ->query(fn () => Produit::where('en_vente', false))
-                ->badge(fn () => Produit::where('en_vente', true)->count())
+                ->badge(fn () => Produit::where('en_vente', false)->count())
                 ->badgeColor('danger'),
         ];
     }

@@ -66,13 +66,19 @@ class CreateVente extends CreateRecord
         $produits = $data['produits'] ?? [];
         unset($data['produits']);
 
+        $client = Client::find($data['client_id']);
         // Mise à jour des crédits du client
-        if ($data['moyen_paiement'] === 'credit') {
-            $client = Client::find($data['client_id']);
-            if ($client && $client->solde_credit >= $data['total']) {
-                $client->decrement('solde_credit', $data['total']);
-            }
+        if ($client) {
+        // 🔥 Ajouter les crédits si `nombre_credits` est supérieur à 0
+        if (!empty($data['nombre_credits']) && $data['nombre_credits'] > 0) {
+            $client->incrementCredit($data['nombre_credits']); // Utilise la fonction du modèle Client
         }
+
+        // Si le paiement est par crédit, décrémente le solde du client
+        if ($data['moyen_paiement'] === 'credit' && $client->solde_credit >= $data['total']) {
+            $client->decrementCredit($data['total']);
+        }
+    }
 
         // Création de la vente
         $vente = Vente::create($data);

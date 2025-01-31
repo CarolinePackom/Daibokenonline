@@ -6,6 +6,7 @@ use App\Filament\Resources\FormuleResource;
 use App\Filament\Resources\FormuleResource\Widgets\FormuleWidgets;
 use App\Models\Tarif;
 use Filament\Actions;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\ListRecords;
 
@@ -28,16 +29,18 @@ class ListFormules extends ListRecords
                 ->icon('heroicon-o-pencil')
                 ->color('gray')
                 ->form([
-                    TextInput::make('prix_une_heure')
-                        ->label('Prix par heure (€)')
-                        ->numeric()
-                        ->default(fn () => Tarif::firstOrCreate()->prix_une_heure)
-                        ->required(),
-                    TextInput::make('prix_un_jour')
-                        ->label('Prix par jour (€)')
-                        ->numeric()
-                        ->default(fn () => Tarif::firstOrCreate()->prix_un_jour)
-                        ->required(),
+                    Grid::make(2)->schema([
+                        TextInput::make('prix_une_heure')
+                            ->label('Prix par heure (€)')
+                            ->numeric()
+                            ->default(fn () => Tarif::firstOrCreate()->prix_une_heure)
+                            ->required(),
+                        TextInput::make('prix_un_jour')
+                            ->label('Prix par jour (€)')
+                            ->numeric()
+                            ->default(fn () => Tarif::firstOrCreate()->prix_un_jour)
+                            ->required(),
+                ]),
                 ])
                 ->action(function (array $data) {
                     $tarif = Tarif::first();

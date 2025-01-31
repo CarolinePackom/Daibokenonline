@@ -11,6 +11,7 @@ use App\Models\Formule;
 use App\Models\Produit;
 use App\Models\Service;
 use Filament\Forms;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -129,29 +130,55 @@ class VenteResource extends Resource
                         ->schema([
                             Forms\Components\Select::make('produit_id')
                                 ->label('Nom')
-                                ->options(Produit::query()->pluck('nom', 'id'))
+                                ->options(
+                                    Produit::query()
+                                        ->where('en_vente', true)
+                                        ->where('quantite_stock', '>', 0)
+                                        ->pluck('nom', 'id')
+                                )
                                 ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                    $prixUnitaire = Produit::find($state)?->prix ?? 0;
-                                    $quantite = $get('quantite') ?? 1;
-                                    $set('prix', $prixUnitaire * $quantite);
+                                    $produit = Produit::find($state);
+                if ($produit) {
+                    $set('quantite_max', $produit->quantite_stock); // Charge la quantité max
+                    $quantite = min($get('quantite') ?? 1, $produit->quantite_stock);
+                    $set('quantite', $quantite);
+                    $set('prix', $produit->prix * $quantite);
+                } else {
+                    $set('quantite_max', null); // Réinitialise si aucun produit sélectionné
+                    $set('quantite', 1);
+                    $set('prix', 0);
+                }
                                 })
                                 ->distinct()
                                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                ->columnSpan(['lg' => 2])
+                                ->columnSpan(2)
                                 ->placeholder('Sélectionnez un produit')
                                 ->nullable()
                                 ->searchable(),
 
+                            Hidden::make('quantite_max')
+            ->reactive(),
+
                             Forms\Components\TextInput::make('quantite')
-                                ->label('Quantité')
-                                ->numeric()
-                                ->default(1)
-                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                    $prixUnitaire = Produit::find($get('produit_id'))?->prix ?? 0;
-                                    $set('prix', $prixUnitaire * $state);
-                                })
-                                ->live(onBlur: true)
-                                ->columnSpan(['lg' => 1]),
+            ->label('Quantité')
+            ->numeric()
+            ->default(1)
+            ->afterStateUpdated(function ($state, Forms\Set $set, Get $get) {
+                $quantite_max = $get('quantite_max') ?? 1;
+                $quantite = min($state, $quantite_max); // Corrige automatiquement la quantité
+                if ($state > $quantite_max) {
+                    $set('quantite', $quantite); // Corrige directement l'input
+                }
+                $produit = Produit::find($get('produit_id'));
+                if ($produit) {
+                    $set('prix', $produit->prix * $quantite);
+                }
+            })
+            ->live()
+                                ->disabled(fn (Get $get) => $get('quantite_max') === null)
+            ->reactive()
+            ->maxValue(fn (Get $get) => $get('quantite_max') ?? 1)
+            ->columnSpan(1),
 
                             Forms\Components\TextInput::make('prix')
                                 ->label('Prix')
@@ -159,7 +186,7 @@ class VenteResource extends Resource
                                 ->dehydrated()
                                 ->numeric()
                                 ->default(0)
-                                ->columnSpan(['lg' => 1]),
+                                ->columnSpan(1),
                         ])
                         ->defaultItems(1)
                         ->hiddenLabel()
@@ -219,7 +246,7 @@ class VenteResource extends Resource
                                             ->columns(2),
                                     ]),
 
-                                Forms\Components\Tabs\Tab::make('Personnalisée')
+                                Forms\Components\Tabs\Tab::make('Personnaliser')
                                     ->schema([
                                         Forms\Components\TextInput::make('custom_duration')
                                             ->label('Durée')
@@ -323,7 +350,8 @@ class VenteResource extends Resource
                                     ->get(['montant', 'prix'])
                                     ->toArray()
                             ))
-                            ->columnSpan(4),
+                            ->columnSpan(4)
+                            ->reactive(),
 
                         Forms\Components\Placeholder::make('solde_credit')
                             ->label('Solde actuel')
@@ -384,13 +412,20 @@ class VenteResource extends Resource
                             ->schema([
                                 Forms\Components\ToggleButtons::make('moyen_paiement')
                                     ->label('Moyen de paiement')
-                                    ->options([
-                                        'carte' => 'Carte bancaire',
-                                        'espece' => 'Espèces',
-                                        'credit' => 'Crédit',
-                                    ])
+                                    ->options(fn (Get $get) =>
+                                    $get('nombre_credits') > 0
+                                        ? [
+                                            'carte' => 'Carte bancaire',
+                                            'espece' => 'Espèces',
+                                          ]
+                                        : [
+                                            'carte' => 'Carte bancaire',
+                                            'espece' => 'Espèces',
+                                            'credit' => 'Crédit',
+                                          ]
+                                )
                                     ->required()
-                                    ->visible(fn (Forms\Get $get) => $get('moyen_paiement') !== 'credit' || ($get('client_credit') >= $get('total'))),
+                                    ->reactive(),
                             ])
                             ->columnSpan(1),
                     ])
@@ -464,16 +499,16 @@ class VenteResource extends Resource
             }
 
             function calculTotal() {
-    let total = 0;
-    placeholdersExceptLast.forEach((placeholder) => {
-        const text = placeholder.textContent.trim();
-        const match = text.match(/[\d,\.]+/);
-        if (match) {
-            total += parseFloat(match[0].replace(',', '.'));
-        }
-    });
-    return parseFloat(total);
-}
+                let total = 0;
+                placeholdersExceptLast.forEach((placeholder) => {
+                    const text = placeholder.textContent.trim();
+                    const match = text.match(/[\d,\.]+/);
+                    if (match) {
+                        total += parseFloat(match[0].replace(',', '.'));
+                    }
+                });
+                return parseFloat(total);
+            }
 
         });
     </script>

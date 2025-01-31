@@ -125,16 +125,11 @@ class ProduitResource extends Resource
                     ->label('Prix (€)')
                     ->sortable(),
                 TextColumn::make('quantite_stock')
-                    ->label('Stock')
+                    ->label('Stock restant')
                     ->sortable(),
-                IconColumn::make('en_vente')
+                Tables\Columns\ToggleColumn::make('en_vente')
                     ->label('En vente')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->sortable()
+                    ->sortable(),
             ])
             ->filters([
                 //
