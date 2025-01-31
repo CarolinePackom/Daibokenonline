@@ -47,17 +47,17 @@ class FormuleResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nom')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('nom'),
                 Tables\Columns\TextColumn::make('duree_en_heures')
-                    ->label('Durée en heures')
+                    ->label('Durée (heures)')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('duree_en_jours')
-                    ->label('Durée en jours')
+                    ->label('Durée (jours)')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('prix')
+                    ->label('Prix (€)')
                     ->numeric()
                     ->sortable(),
             ])
@@ -65,13 +65,12 @@ class FormuleResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                //
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+                //
+            ])
+            ->paginated(false);
     }
 
     public static function getRelations(): array

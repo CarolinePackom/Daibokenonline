@@ -31,12 +31,12 @@ class ListFormules extends ListRecords
                 ->form([
                     Grid::make(2)->schema([
                         TextInput::make('prix_une_heure')
-                            ->label('Prix par heure (€)')
+                            ->label('Prix par heure (€/heure)')
                             ->numeric()
                             ->default(fn () => Tarif::firstOrCreate()->prix_une_heure)
                             ->required(),
                         TextInput::make('prix_un_jour')
-                            ->label('Prix par jour (€)')
+                            ->label('Prix par jour (€/jour)')
                             ->numeric()
                             ->default(fn () => Tarif::firstOrCreate()->prix_un_jour)
                             ->required(),
