@@ -202,6 +202,7 @@ class VenteResource extends Resource
                                     ])
                                     ->toArray())
                                 ->required()
+                                ->grouped()
                                 ->inline()
                                 ->default(StatutEnum::Pret->value),
                         ]),
@@ -270,6 +271,7 @@ class VenteResource extends Resource
                                             'jours'  => 'Jours',
                                         ])
                                         ->inline()
+                                        ->grouped()
                                         ->default('heures')
                                         ->columnSpan(2)
                                         ->afterStateUpdated(fn($state, Set $set, Get $get) => self::updateTotal($set, $get)),
@@ -338,14 +340,13 @@ class VenteResource extends Resource
                             ->label('Nombre de crédits à ajouter')
                             ->numeric()
                             ->default(0)
-                            ->minValue(0)
                             ->columnSpan(4)
                             ->debounce(500)
                             ->disabled(fn (Get $get) => (bool) $get('utiliser_credit_pour_payer'))
                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                 // Si le toggle n'est pas actif et que l'utilisateur a saisi une valeur négative (par copier/coller par exemple), on force la valeur positive
                                 if (!$get('utiliser_credit_pour_payer') && $state < 0) {
-                                    $set('nombre_credits', abs($state));
+                                    $set('nombre_credits', 0);
                                 }
                                 // Dès qu'un montant est saisi manuellement, on désactive le toggle
                                 if (!$get('utiliser_credit_pour_payer') && (int)$state !== 0) {
