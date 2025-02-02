@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Enums\StatutEnum;
 use App\Filament\Resources\VenteResource\Pages;
-use App\Filament\Resources\VenteResource\RelationManagers;
 use App\Models\Credit;
 use App\Models\Tarif;
 use App\Models\Vente;
@@ -13,19 +12,18 @@ use App\Models\Formule;
 use App\Models\Produit;
 use App\Models\Service;
 use Filament\Forms;
-use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\Button;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
 use Filament\Forms\Get;
 
 class VenteResource extends Resource
@@ -38,10 +36,9 @@ class VenteResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                //
-            ]);
+        return $form->schema([
+            // ...
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -52,40 +49,16 @@ class VenteResource extends Resource
                     ->label('Total')
                     ->formatStateUsing(fn (Vente $record) => number_format($record->total, 2, ',', ' ') . ' €')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('statut.nom'),
-                Tables\Columns\TextColumn::make('user_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('client_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('est_paye')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('moyen_paiement'),
-                Tables\Columns\TextColumn::make('total')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('nombre_credits')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('formule_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('nombre_heures')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('nombre_jours')
-                    ->numeric()
-                    ->sortable(),
+                // autres colonnes...
             ])
             ->filters([
-                //
+                // ...
             ])
             ->actions([
-                //
+                // ...
             ])
             ->bulkActions([
-                //
+                // ...
             ]);
     }
 
@@ -112,7 +85,7 @@ class VenteResource extends Resource
             Forms\Components\Group::make()
                 ->schema([
                     // Sélection du client
-                    Forms\Components\Section::make('')
+                    Section::make('')
                         ->schema([
                             Forms\Components\Select::make('client_id')
                                 ->label('Client')
@@ -140,7 +113,7 @@ class VenteResource extends Resource
                                         ->where('quantite_stock', '>', 0)
                                         ->pluck('nom', 'id')
                                 )
-                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                     $produit = Produit::find($state);
                                     if ($produit) {
                                         $set('quantite_max', $produit->quantite_stock);
@@ -152,7 +125,7 @@ class VenteResource extends Resource
                                         $set('quantite', 1);
                                         $set('prix', 0);
                                     }
-                                    self::updateTotal($set, $get); // mise à jour du total lors d'un changement de produit
+                                    self::updateTotal($set, $get);
                                 })
                                 ->distinct()
                                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
@@ -168,7 +141,7 @@ class VenteResource extends Resource
                                 ->label('Quantité')
                                 ->numeric()
                                 ->default(1)
-                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                     $quantiteMax = $get('quantite_max') ?? 1;
                                     $quantite = min($state, $quantiteMax);
                                     if ($state > $quantiteMax) {
@@ -180,12 +153,12 @@ class VenteResource extends Resource
                                     if ($produit = Produit::find($get('produit_id'))) {
                                         $set('prix', $produit->prix * $quantite);
                                     }
-                                    self::updateTotal($set, $get); // mise à jour du total lors d'un changement de quantité
+                                    self::updateTotal($set, $get);
                                 })
                                 ->live()
-                                ->disabled(fn (Forms\Get $get) => $get('quantite_max') === null)
+                                ->disabled(fn (Get $get) => $get('quantite_max') === null)
                                 ->reactive()
-                                ->maxValue(fn (Forms\Get $get) => $get('quantite_max') ?? 1)
+                                ->maxValue(fn (Get $get) => $get('quantite_max') ?? 1)
                                 ->minValue(0)
                                 ->columnSpan(1),
 
@@ -209,7 +182,7 @@ class VenteResource extends Resource
             Forms\Components\Group::make()
                 ->schema([
                     // Choix du statut
-                    Forms\Components\Section::make('Statut')
+                    Section::make('Statut')
                         ->schema([
                             ToggleButtons::make('statut')
                                 ->hiddenLabel()
@@ -237,14 +210,33 @@ class VenteResource extends Resource
                         ->tabs([
                             Forms\Components\Tabs\Tab::make('Formules')
                                 ->schema([
-                                    Forms\Components\ToggleButtons::make('formule_id')
-                                        ->label('')
-                                        ->options(Formule::pluck('nom', 'id'))
-                                        ->nullable()
-                                        ->gridDirection('row')
-                                        ->disabled(fn (Forms\Get $get) => !empty($get('custom_duration')))
-                                        ->afterStateUpdated(fn ($state, Forms\Set $set) => $state !== null ? $set('custom_duration', null) : null)
-                                        ->columns(2),
+                                    // Groupe contenant le toggle et un bouton de réinitialisation
+                                    Forms\Components\Group::make()
+                                        ->schema([
+                                            ToggleButtons::make('formule_id')
+                                                ->label('')
+                                                ->options(Formule::pluck('nom', 'id'))
+                                                ->nullable()
+                                                ->gridDirection('row')
+                                                ->disabled(fn (Get $get) => !empty($get('custom_duration')))
+                                                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                                    if ($state !== null) {
+                                                        $set('custom_duration', null);
+                                                    }
+                                                    // Si le toggle pour crédit est actif, recalculer la réduction
+                                                    if ($get('utiliser_credit_pour_payer')) {
+                                                        $client = Client::find($get('client_id'));
+                                                        $soldeCredit = $client?->solde_credit ?? 0;
+                                                        $totalSansCredits = self::getTotalSansCredits($get);
+                                                        $discount = min($soldeCredit, $totalSansCredits);
+                                                        $set('nombre_credits', -$discount);
+                                                        $set('placeholder_credit', 'Réduction appliquée : -' . number_format($discount, 2, ',', ' ') . ' €');
+                                                        $set('moyen_paiement', 'credit');
+                                                    }
+                                                    self::updateTotal($set, $get);
+                                                })
+                                                ->columns(2),
+                                        ]),
                                 ]),
                             Forms\Components\Tabs\Tab::make('Personnaliser')
                                 ->schema([
@@ -253,33 +245,47 @@ class VenteResource extends Resource
                                         ->numeric()
                                         ->reactive()
                                         ->minValue(0)
-                                        ->afterStateUpdated(fn ($state, Forms\Set $set) => ($state !== null && $state !== '')
-                                            ? $set('formule_id', null)
-                                            : null)
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            if ($state !== null && $state !== '') {
+                                                $set('formule_id', null);
+                                                // Si le toggle crédit est actif, recalculez la réduction
+                                                if ($get('utiliser_credit_pour_payer')) {
+                                                    $client = Client::find($get('client_id'));
+                                                    $soldeCredit = $client?->solde_credit ?? 0;
+                                                    $totalSansCredits = self::getTotalSansCredits($get);
+                                                    $discount = min($soldeCredit, $totalSansCredits);
+                                                    $set('nombre_credits', -$discount);
+                                                    $set('placeholder_credit', 'Réduction appliquée : -' . number_format($discount, 2, ',', ' ') . ' €');
+                                                    $set('moyen_paiement', 'credit');
+                                                }
+                                            }
+                                            self::updateTotal($set, $get);
+                                        })
                                         ->columnSpan(1),
 
                                     Forms\Components\ToggleButtons::make('custom_unit')
                                         ->label('Unité')
                                         ->options([
                                             'heures' => 'Heures',
-                                            'jours'   => 'Jours',
+                                            'jours'  => 'Jours',
                                         ])
                                         ->inline()
                                         ->default('heures')
-                                        ->columnSpan(2),
+                                        ->columnSpan(2)
+                                        ->afterStateUpdated(fn($state, Set $set, Get $get) => self::updateTotal($set, $get)),
                                 ])
                                 ->columns(3),
                         ]),
                 ])
                 ->columnSpan(['lg' => 1]),
 
-            // Liste des services (récupérés via un champ caché)
+            // Liste des services (champ caché)
             Forms\Components\Hidden::make('service_ids')
                 ->default(fn () => request('service_ids', ''))
                 ->dehydrated(false),
 
             Section::make('Services')
-                ->schema(function (Forms\Get $get, Forms\Set $set) {
+                ->schema(function (Get $get, Set $set) {
                     $serviceIds = array_filter(explode(',', $get('service_ids') ?? ''));
                     if (empty($serviceIds)) {
                         return [
@@ -288,16 +294,13 @@ class VenteResource extends Resource
                                 ->content("Aucun service n'a été trouvé."),
                         ];
                     }
-
                     $services = Service::whereIn('id', $serviceIds)->get();
                     if ($services->isNotEmpty()) {
                         $keyValueData = $services->mapWithKeys(fn ($service) => [
                             $service->nom => number_format($service->prix, 2) . ' €',
                         ])->toArray();
-
                         $total = $services->sum('prix');
                         $set('placeholder_services_default', 'Services : ' . number_format($total, 2, ',', ' ') . ' €');
-
                         return [
                             KeyValue::make('services')
                                 ->hiddenLabel()
@@ -305,7 +308,7 @@ class VenteResource extends Resource
                                 ->addable(false)
                                 ->editableKeys(false)
                                 ->editableValues(false)
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                ->afterStateUpdated(function ($state, Set $set) {
                                     $total = array_sum(array_map(fn ($value) => (float) str_replace([' €', ','], ['', '.'], $value), $state ?? []));
                                     $set('placeholder_services', 'Services : ' . number_format($total, 2, ',', ' ') . ' €');
                                 })
@@ -313,14 +316,13 @@ class VenteResource extends Resource
                                 ->valueLabel('Prix'),
                         ];
                     }
-
                     return [
                         Placeholder::make('message')
                             ->label('Aucun service sélectionné')
                             ->content("Aucun service n'a été trouvé."),
                     ];
                 })
-                ->hidden(fn (Forms\Get $get) => empty($get('service_ids')))
+                ->hidden(fn (Get $get) => empty($get('service_ids')))
                 ->columns(1),
         ];
     }
@@ -330,7 +332,7 @@ class VenteResource extends Resource
         return Forms\Components\Group::make()
             ->schema([
                 // Section Crédit
-                Forms\Components\Section::make('Crédit')
+                Section::make('Crédit')
                     ->schema([
                         Forms\Components\TextInput::make('nombre_credits')
                             ->label('Nombre de crédits à ajouter')
@@ -338,36 +340,40 @@ class VenteResource extends Resource
                             ->default(0)
                             ->minValue(0)
                             ->columnSpan(4)
-                            ->debounce(500) // pour éviter des mises à jour trop fréquentes
-                            ->disabled(fn (Forms\Get $get) => (bool) $get('utiliser_credit_pour_payer'))
-                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                // Dès qu'un nombre non nul est saisi, on force le toggle à false
-                                if ((int)$state !== 0) {
+                            ->debounce(500)
+                            ->disabled(fn (Get $get) => (bool) $get('utiliser_credit_pour_payer'))
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                // Si le toggle n'est pas actif et que l'utilisateur a saisi une valeur négative (par copier/coller par exemple), on force la valeur positive
+                                if (!$get('utiliser_credit_pour_payer') && $state < 0) {
+                                    $set('nombre_credits', abs($state));
+                                }
+                                // Dès qu'un montant est saisi manuellement, on désactive le toggle
+                                if (!$get('utiliser_credit_pour_payer') && (int)$state !== 0) {
                                     $set('utiliser_credit_pour_payer', false);
                                 }
-                                if (!(bool)$get('utiliser_credit_pour_payer')) {
-                                    $creditsDemandes = max(0, (int) $state);
-                                    $reduction     = self::calculateCreditReduction($creditsDemandes);
-                                    $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
-                                    $set('placeholder_credit', $creditsDemandes > 0
-                                        ? 'Crédit (achat) : ' . number_format($costForCredits, 2, ',', ' ') . ' €'
-                                        : null
-                                    );
-                                }
+                                // Mise à jour du coût pour crédits en cas d'achat
+                                $creditsDemandes = max(0, (int)$state);
+                                $reduction     = self::calculateCreditReduction($creditsDemandes);
+                                $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
+                                $set('placeholder_credit', $creditsDemandes > 0
+                                    ? 'Crédit (achat) : ' . number_format($costForCredits, 2, ',', ' ') . ' €'
+                                    : null
+                                );
                                 self::updateTotal($set, $get);
                             }),
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\Placeholder::make('solde_credit')
                                     ->label('Solde actuel')
-                                    ->content(fn (Forms\Get $get) => number_format(optional(Client::find($get('client_id')))->solde_credit ?? 0, 2, ',', ' ')),
+                                    ->content(fn (Get $get) => number_format(optional(Client::find($get('client_id')))->solde_credit ?? 0, 2, ',', ' ')),
                                 Forms\Components\Toggle::make('utiliser_credit_pour_payer')
                                     ->label('Utiliser pour payer')
                                     ->default(false)
                                     ->reactive()
-                                    ->hidden(fn (Forms\Get $get) => (optional(Client::find($get('client_id')))->solde_credit ?? 0) <= 0)
-                                    ->disabled(fn (Forms\Get $get) => (int)$get('nombre_credits') !== 0)
-                                    ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                    ->hidden(fn (Get $get) => (optional(Client::find($get('client_id')))->solde_credit ?? 0) <= 0)
+                                    // Désactivation si l'utilisateur a saisi manuellement un montant positif
+                                    ->disabled(fn (Get $get) => (int)$get('nombre_credits') > 0)
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                         if ($state) {
                                             $client = Client::find($get('client_id'));
                                             $soldeCredit = $client?->solde_credit ?? 0;
@@ -375,6 +381,8 @@ class VenteResource extends Resource
                                             $discount = min($soldeCredit, $totalSansCredits);
                                             $set('nombre_credits', -$discount);
                                             $set('placeholder_credit', 'Réduction appliquée : -' . number_format($discount, 2, ',', ' ') . ' €');
+                                            // Sélection automatique du moyen de paiement "Crédit"
+                                            $set('moyen_paiement', 'credit');
                                         } else {
                                             $set('nombre_credits', 0);
                                             $set('placeholder_credit', null);
@@ -386,14 +394,14 @@ class VenteResource extends Resource
                     ->columns(5),
 
                 // Section Paiement
-                Forms\Components\Section::make('Paiement')
+                Section::make('Paiement')
                     ->schema([
-                        Forms\Components\Section::make()
+                        Section::make()
                             ->schema([
                                 Forms\Components\Placeholder::make('placeholder_produits')
                                     ->hiddenLabel()
-                                    ->hidden(fn (Forms\Get $get) => array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])) == 0)
-                                    ->content(fn (Forms\Get $get) => 'Produits : ' . number_format(
+                                    ->hidden(fn (Get $get) => array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])) == 0)
+                                    ->content(fn (Get $get) => 'Produits : ' . number_format(
                                         array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])),
                                         2,
                                         ',',
@@ -401,12 +409,12 @@ class VenteResource extends Resource
                                     ) . ' €'),
                                 Forms\Components\Placeholder::make('placeholder_services')
                                     ->hiddenLabel()
-                                    ->hidden(fn (Forms\Get $get) => (float) ($get('placeholder_services_default') ?? 0) == 0)
-                                    ->content(fn (Forms\Get $get) => $get('placeholder_services'))
-                                    ->default(fn (Forms\Get $get) => $get('placeholder_services_default') ?? 'Services : 0 €'),
+                                    ->hidden(fn (Get $get) => (float) ($get('placeholder_services_default') ?? 0) == 0)
+                                    ->content(fn (Get $get) => $get('placeholder_services'))
+                                    ->default(fn (Get $get) => $get('placeholder_services_default') ?? 'Services : 0 €'),
                                 Forms\Components\Placeholder::make('placeholder_formule')
                                     ->hiddenLabel()
-                                    ->hidden(function (Forms\Get $get) {
+                                    ->hidden(function (Get $get) {
                                         $formuleId      = $get('formule_id');
                                         $customDuration = $get('custom_duration');
                                         $customUnit     = $get('custom_unit');
@@ -415,7 +423,6 @@ class VenteResource extends Resource
                                             $formule = Formule::find($formuleId);
                                             return !$formule || $formule->prix == 0;
                                         }
-
                                         if ($customDuration && $customUnit) {
                                             $tarif = Tarif::first();
                                             $prixUnitaire = $customUnit === 'heures' ? $tarif->prix_une_heure : $tarif->prix_un_jour;
@@ -423,7 +430,7 @@ class VenteResource extends Resource
                                         }
                                         return true;
                                     })
-                                    ->content(function (Forms\Get $get) {
+                                    ->content(function (Get $get) {
                                         if ($formuleId = $get('formule_id')) {
                                             $formule = Formule::find($formuleId);
                                             return $formule
@@ -442,8 +449,8 @@ class VenteResource extends Resource
                                     }),
                                 Forms\Components\Placeholder::make('placeholder_credit')
                                     ->hiddenLabel()
-                                    ->hidden(fn (Forms\Get $get) => ($get('nombre_credits') ?? 0) == 0)
-                                    ->content(function (Forms\Get $get) {
+                                    ->hidden(fn (Get $get) => ($get('nombre_credits') ?? 0) == 0)
+                                    ->content(function (Get $get) {
                                         $nombreCredits = $get('nombre_credits') ?? 0;
                                         if ($nombreCredits < 0) {
                                             return 'Crédit : -' . number_format(abs((float)$nombreCredits), 2, ',', ' ') . ' €';
@@ -456,18 +463,26 @@ class VenteResource extends Resource
                                 Forms\Components\Placeholder::make('placeholder_total')
                                     ->label('TOTAL :')
                                     ->reactive()
-                                    ->content(fn (Forms\Get $get) => self::calculateTotal($get)),
+                                    ->content(fn (Get $get) => self::calculateTotal($get)),
                             ])
                             ->columnSpan(1),
-                        Forms\Components\Section::make('')
+                        Section::make('')
                             ->schema([
-                                Forms\Components\ToggleButtons::make('moyen_paiement')
+                                ToggleButtons::make('moyen_paiement')
                                     ->label('Moyen de paiement')
-                                    ->options(fn (Forms\Get $get) => (
-                                        (bool)$get('utiliser_credit_pour_payer') &&
-                                        (abs((float)($get('nombre_credits') ?? 0)) >= self::getTotalSansCredits($get))
+                                    ->options(fn (Get $get) => (
+                                        ($get('utiliser_credit_pour_payer') &&
+                                         (abs((float)($get('nombre_credits') ?? 0)) >= self::getTotalSansCredits($get))
+                                        )
                                         ? ['credit' => 'Crédit']
                                         : ['carte' => 'Carte bancaire', 'espece' => 'Espèces']
+                                    ))
+                                    ->default(fn (Get $get) => (
+                                        ($get('utiliser_credit_pour_payer') &&
+                                         (abs((float)($get('nombre_credits') ?? 0)) >= self::getTotalSansCredits($get))
+                                        )
+                                        ? 'credit'
+                                        : null
                                     ))
                                     ->inline()
                                     ->required()
@@ -480,9 +495,9 @@ class VenteResource extends Resource
     }
 
     /**
-     * Calcule le total hors crédits en cumulant le total des produits, des services et la formule ou la personnalisation.
+     * Calcule le total hors crédits (produits + services + formule/personnalisation).
      */
-    private static function getTotalSansCredits(Forms\Get $get): float
+    private static function getTotalSansCredits(Get $get): float
     {
         $totalProduits = array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? []));
         $total = $totalProduits + (float) ($get('placeholder_services_default') ?? 0);
@@ -504,8 +519,7 @@ class VenteResource extends Resource
     }
 
     /**
-     * Pour un nombre de crédits demandés, renvoie la réduction applicable
-     * (en parcourant les paliers de crédits dans l'ordre décroissant).
+     * Pour un nombre de crédits demandés, renvoie la réduction applicable.
      */
     private static function calculateCreditReduction(int $creditsDemandes): float
     {
@@ -522,7 +536,7 @@ class VenteResource extends Resource
     /**
      * Calcule le total global en fonction du total hors crédits et de l'utilisation ou non des crédits.
      */
-    private static function calculateTotal(Forms\Get $get): string
+    private static function calculateTotal(Get $get): string
     {
         $totalSansCredits = self::getTotalSansCredits($get);
 
@@ -543,7 +557,7 @@ class VenteResource extends Resource
     /**
      * Met à jour le placeholder du total.
      */
-    private static function updateTotal(Forms\Set $set, Forms\Get $get): void
+    private static function updateTotal(Set $set, Get $get): void
     {
         $set('placeholder_total', self::calculateTotal($get));
     }
