@@ -56,36 +56,58 @@ class Vente extends Model
     }
 
     public static function createVente(Vente $vente, array $data): void
-    {
-        DB::transaction(function () use ($vente, $data) {
-            // 🔥 Gestion des crédits
-            $client = Client::find($vente->client_id);
-            if ($client) {
-                if (!empty($data['nombre_credits']) && $data['nombre_credits'] > 0) {
+{
+    DB::transaction(function () use ($vente, $data) {
+        // 🔥 Gestion des crédits
+        $client = Client::find($vente->client_id);
+        if ($client) {
+            if (isset($data['nombre_credits'])) {
+                if ($data['nombre_credits'] > 0) {
+                    // L'utilisateur achète des crédits : on incrémente son solde.
                     $client->incrementCredit($data['nombre_credits']);
-                }
-                if ($vente->moyen_paiement === 'credit' && $client->solde_credit >= $vente->total) {
-                    $client->decrementCredit($vente->total);
+                } elseif ($data['nombre_credits'] < 0) {
+                    // L'utilisateur utilise ses crédits pour payer.
+                    // On prend la valeur absolue du montant à utiliser.
+                    $creditToUse = abs($data['nombre_credits']);
+                    // Optionnel : vérifier que le client a suffisamment de crédits
+                    if ($client->solde_credit >= $creditToUse) {
+                        $client->decrementCredit($creditToUse);
+                    } else {
+                        // Si le client n'a pas assez de crédits, on décrémente tout son solde.
+                        $client->decrementCredit($client->solde_credit);
+                    }
                 }
             }
+        }
 
-            // ✅ Ajout des produits
-            $produitsToAttach = [];
-            foreach ($data['produits'] as $produit) {
-                if (!empty($produit['produit_id']) && Produit::where('id', $produit['produit_id'])->exists()) {
-                    $produitsToAttach[$produit['produit_id']] = ['quantite' => $produit['quantite'] ?? 1];
+        // ✅ Ajout des produits vendus et mise à jour des stocks
+        $produitsToAttach = [];
+        foreach ($data['produits'] as $produit) {
+            if (!empty($produit['produit_id']) && Produit::where('id', $produit['produit_id'])->exists()) {
+                $quantity = $produit['quantite'] ?? 1;
+                $produitsToAttach[$produit['produit_id']] = ['quantite' => $quantity];
+            }
+        }
+        if (!empty($produitsToAttach)) {
+            // Attachement des produits à la vente (enregistre les quantités dans la table pivot)
+            $vente->produits()->attach($produitsToAttach);
+            // Mise à jour des stocks pour chaque produit vendu
+            foreach ($produitsToAttach as $produitId => $pivotData) {
+                $quantity = $pivotData['quantite'];
+                $produit = Produit::find($produitId);
+                if ($produit) {
+                    $produit->decrement('quantite_stock', $quantity);
                 }
             }
-            if (!empty($produitsToAttach)) {
-                $vente->produits()->attach($produitsToAttach);
-            }
+        }
 
-            // ✅ Ajout des services
-            if (!empty($data['service_ids'])) {
-                $vente->services()->attach($data['service_ids']);
-            }
-        });
-    }
+        // ✅ Ajout des services associés à la vente
+        if (!empty($data['service_ids'])) {
+            $vente->services()->attach($data['service_ids']);
+        }
+    });
+}
+
 
 
     public static function prepareVenteData(array $data): array

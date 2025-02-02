@@ -18,7 +18,6 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Components\Button;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
@@ -45,11 +44,70 @@ class VenteResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('total')
-                    ->label('Total')
-                    ->formatStateUsing(fn (Vente $record) => number_format($record->total, 2, ',', ' ') . ' €')
-                    ->sortable(),
-                // autres colonnes...
+                Tables\Columns\TextColumn::make('client_full_name')
+                ->label('Client')
+                ->getStateUsing(fn (\App\Models\Vente $record) => $record->client->prenom . ' ' . $record->client->nom)
+                ->sortable()
+                ->searchable(),
+
+            Tables\Columns\TextColumn::make('total')
+                ->label('Total')
+                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', ' ') . ' €')
+                ->color('primary')
+                ->sortable(),
+
+            // Statut : SelectColumn avec options issues de l'enum, valeur par défaut et sans placeholder
+            Tables\Columns\SelectColumn::make('statut')
+                ->label('Statut')
+                ->options(
+                    collect(StatutEnum::cases())
+                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getLabel()])
+                        ->toArray()
+                )
+                ->default(StatutEnum::Pret->value)
+                ->selectablePlaceholder(false)
+                ->sortable(),
+
+            // Moyen de paiement : conversion de la valeur stockée en libellé complet
+            Tables\Columns\TextColumn::make('moyen_paiement')
+                ->label('Moyen de paiement')
+                ->formatStateUsing(fn ($state) => $state === 'carte' ? 'Carte bancaire' : ($state === 'espece' ? 'Espèce' : $state))
+                ->sortable()
+                ->searchable(),
+
+            // Crédits : ajout du préfixe "+ " pour un montant positif ou "- " pour un montant négatif
+            Tables\Columns\TextColumn::make('nombre_credits')
+                ->label('Crédits')
+                ->formatStateUsing(fn ($state) => ($state < 0 ? '- ' : '+ ') . abs($state))
+                ->sortable(),
+
+            // Formule : Affichage du nom de la formule ou, si personnalisé, la durée et l'unité suivie de "(personnalisé)"
+            Tables\Columns\TextColumn::make('formule_info')
+                ->label('Formule')
+                ->getStateUsing(function (\App\Models\Vente $record) {
+                    if ($record->custom_duration) {
+                        $unit = $record->custom_unit === 'heures' ? 'Heures' : 'Jours';
+                        return "{$record->custom_duration} {$unit} (personnalisé)";
+                    } elseif ($record->formule) {
+                        return $record->formule->nom;
+                    }
+                    return '';
+                })
+                ->sortable()
+                ->searchable(),
+
+            // Créé par : Affichage du nom de l'utilisateur qui a créé la vente (relation "user")
+            Tables\Columns\TextColumn::make('user.name')
+                ->label('Créé par')
+                ->sortable()
+                ->searchable(),
+
+            // Date de création de la vente
+            Tables\Columns\TextColumn::make('created_at')
+                ->label('Créé le')
+                ->dateTime('d/m/Y H:i')
+                ->sortable()
+                ->searchable(),
             ])
             ->filters([
                 // ...
