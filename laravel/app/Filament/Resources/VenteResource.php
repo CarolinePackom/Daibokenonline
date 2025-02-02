@@ -240,7 +240,7 @@ class VenteResource extends Resource
                                     Forms\Components\ToggleButtons::make('formule_id')
                                         ->label('')
                                         ->options(Formule::pluck('nom', 'id'))
-                                        ->allowDeselect() // Permet de décocher une formule
+                                        ->nullable()
                                         ->gridDirection('row')
                                         ->disabled(fn (Forms\Get $get) => !empty($get('custom_duration')))
                                         ->afterStateUpdated(fn ($state, Forms\Set $set) => $state !== null ? $set('custom_duration', null) : null)
