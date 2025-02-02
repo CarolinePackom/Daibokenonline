@@ -96,61 +96,61 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 1',
+            'nom' => 'DBK-1',
             'adresse_ip' => '192.168.1.1',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 2',
+            'nom' => 'DBK-2',
             'adresse_ip' => '192.168.1.2',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 3',
+            'nom' => 'DBK-3',
             'adresse_ip' => '192.168.1.3',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 4',
+            'nom' => 'DBK-4',
             'adresse_ip' => '192.168.1.4',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 5',
+            'nom' => 'DBK-5',
             'adresse_ip' => '192.168.1.5',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 6',
+            'nom' => 'DBK-6',
             'adresse_ip' => '192.168.1.6',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 7',
+            'nom' => 'DBK-7',
             'adresse_ip' => '192.168.1.7',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 8',
+            'nom' => 'DBK-8',
             'adresse_ip' => '192.168.1.8',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 9',
+            'nom' => 'DBK-9',
             'adresse_ip' => '192.168.1.9',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
-            'nom' => 'PC 10',
+            'nom' => 'DBK-10',
             'adresse_ip' => '192.168.1.10',
             'last_update' => now(),
         ]);

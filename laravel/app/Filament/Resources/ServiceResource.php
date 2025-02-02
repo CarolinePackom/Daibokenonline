@@ -28,12 +28,16 @@ class ServiceResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nom')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('prix')
-                    ->required()
-                    ->numeric(),
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\TextInput::make('nom')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('prix')
+                            ->required()
+                            ->numeric(),
+                    ])
+                    ->columns(2),
             ]);
     }
 
@@ -41,9 +45,9 @@ class ServiceResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nom')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('nom'),
                 Tables\Columns\TextColumn::make('prix')
+                    ->label('Prix (€)')
                     ->numeric()
                     ->sortable()
             ])
@@ -51,11 +55,12 @@ class ServiceResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                //
             ])
             ->bulkActions([
                 //
-            ]);
+            ])
+            ->paginated(false);
     }
 
     public static function getRelations(): array

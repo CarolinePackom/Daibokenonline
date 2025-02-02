@@ -18,7 +18,7 @@ class FormuleResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $navigationGroup = 'En vente';
 
@@ -47,7 +47,6 @@ class FormuleResource extends Resource
                             ->reactive()
                             ->default(null)
                             ->afterStateUpdated(fn ($state, $set) => $set('duree_en_jours', null))
-                            ->disabled(fn ($get) => !empty($get('duree_en_jours')))
                             ->required(fn ($get) => empty($get('duree_en_jours'))),
                         Forms\Components\TextInput::make('duree_en_jours')
                             ->label('Nombre de jours')
@@ -55,7 +54,6 @@ class FormuleResource extends Resource
                             ->default(null)
                             ->reactive()
                             ->afterStateUpdated(fn ($state, $set) => $set('duree_en_heures', null))
-                            ->disabled(fn ($get) => !empty($get('duree_en_heures')))
                             ->required(fn ($get) => empty($get('duree_en_heures'))),
                     ])
                     ->columnSpan(1),

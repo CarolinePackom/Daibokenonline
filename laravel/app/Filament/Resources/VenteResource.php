@@ -5,12 +5,15 @@ namespace App\Filament\Resources;
 use App\Enums\StatutEnum;
 use App\Filament\Resources\VenteResource\Pages;
 use App\Filament\Resources\VenteResource\RelationManagers;
+use App\Models\Credit;
+use App\Models\Tarif;
 use App\Models\Vente;
 use App\Models\Client;
 use App\Models\Formule;
 use App\Models\Produit;
 use App\Models\Service;
 use Filament\Forms;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Placeholder;
@@ -18,6 +21,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -44,6 +48,11 @@ class VenteResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('total')
+    ->label('Total')
+    ->formatStateUsing(fn (Vente $record) => number_format($record->total, 2, ',', ' ') . ' €')
+    ->sortable(),
+
                 Tables\Columns\TextColumn::make('statut.nom'),
                 Tables\Columns\TextColumn::make('user_id')
                     ->numeric()
@@ -74,13 +83,10 @@ class VenteResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                //
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                //
             ]);
     }
 
@@ -96,422 +102,443 @@ class VenteResource extends Resource
         return [
             'index' => Pages\ListVentes::route('/'),
             'create' => Pages\CreateVente::route('/create'),
-            'edit' => Pages\EditVente::route('/{record}'),
         ];
     }
 
     public static function getCreationFormSchema(?int $clientId = null): array
-    {
-        $resolvedClientId = request('client_id') ?? $clientId;
-        return [
-            Forms\Components\Group::make()
-                ->schema([
-                    Forms\Components\Section::make('')
-                        ->schema([
-                            Forms\Components\Select::make('client_id')
-                                ->label('Client')
-                                ->options(
-                                    fn () => Client::query()
-                                        ->whereNull('archived_at')
-                                        ->get()
-                                        ->mapWithKeys(fn ($client) => [
-                                            $client->id => ucfirst(strtolower($client->prenom)) . ' ' . ucfirst(strtolower($client->nom)),
-                                        ])
-                                )
-                                ->searchable()
-                                ->prefixIcon('heroicon-m-user')
-                                ->default($resolvedClientId)
-                                ->disabled($resolvedClientId !== null)
-                                ->required()
-                                ->placeholder('Sélectionnez un client')
-                        ]),
+{
+    $resolvedClientId = request('client_id') ?? $clientId;
 
-                    Repeater::make('produits')
-                        ->schema([
-                            Forms\Components\Select::make('produit_id')
-                                ->label('Nom')
-                                ->options(
-                                    Produit::query()
-                                        ->where('en_vente', true)
-                                        ->where('quantite_stock', '>', 0)
-                                        ->pluck('nom', 'id')
-                                )
-                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                    $produit = Produit::find($state);
-                if ($produit) {
-                    $set('quantite_max', $produit->quantite_stock); // Charge la quantité max
-                    $quantite = min($get('quantite') ?? 1, $produit->quantite_stock);
-                    $set('quantite', $quantite);
-                    $set('prix', $produit->prix * $quantite);
-                } else {
-                    $set('quantite_max', null); // Réinitialise si aucun produit sélectionné
-                    $set('quantite', 1);
-                    $set('prix', 0);
-                }
-                                })
-                                ->distinct()
-                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                ->columnSpan(2)
-                                ->placeholder('Sélectionnez un produit')
-                                ->nullable()
-                                ->searchable(),
+    return [
+        Forms\Components\Group::make()
+            ->schema([
+                // Sélection du client
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\Select::make('client_id')
+                            ->label('Client')
+                            ->options(fn () => Client::whereNull('archived_at')
+                                ->get()
+                                ->mapWithKeys(fn ($client) => [
+                                    $client->id => ucfirst(strtolower($client->prenom))
+                                        . ' ' . ucfirst(strtolower($client->nom)),
+                                ]))
+                            ->searchable()
+                            ->prefixIcon('heroicon-m-user')
+                            ->default($resolvedClientId)
+                            ->disabled($resolvedClientId !== null)
+                            ->required()
+                            ->placeholder('Sélectionnez un client'),
+                    ]),
+                // Répétiteur de produits
+                Repeater::make('produits')
+                    ->schema([
+                        Forms\Components\Select::make('produit_id')
+                            ->label('Nom')
+                            ->options(
+                                Produit::query()
+                                    ->where('en_vente', true)
+                                    ->where('quantite_stock', '>', 0)
+                                    ->pluck('nom', 'id')
+                            )
+                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                $produit = Produit::find($state);
+                                if ($produit) {
+                                    $set('quantite_max', $produit->quantite_stock);
+                                    $quantite = min($get('quantite') ?? 1, $produit->quantite_stock);
+                                    $set('quantite', $quantite);
+                                    $set('prix', $produit->prix * $quantite);
+                                } else {
+                                    $set('quantite_max', null);
+                                    $set('quantite', 1);
+                                    $set('prix', 0);
+                                }
+                            })
+                            ->distinct()
+                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                            ->columnSpan(2)
+                            ->placeholder('Sélectionnez un produit')
+                            ->nullable()
+                            ->searchable(),
 
-                            Hidden::make('quantite_max')
-            ->reactive(),
+                        Hidden::make('quantite_max')
+                            ->reactive(),
 
-                            Forms\Components\TextInput::make('quantite')
-            ->label('Quantité')
-            ->numeric()
-            ->default(1)
-            ->afterStateUpdated(function ($state, Forms\Set $set, Get $get) {
-                $quantite_max = $get('quantite_max') ?? 1;
-                $quantite = min($state, $quantite_max); // Corrige automatiquement la quantité
-                if ($state > $quantite_max) {
-                    $set('quantite', $quantite); // Corrige directement l'input
-                }
-                $produit = Produit::find($get('produit_id'));
-                if ($produit) {
-                    $set('prix', $produit->prix * $quantite);
-                }
-            })
-            ->live()
-                                ->disabled(fn (Get $get) => $get('quantite_max') === null)
-            ->reactive()
-            ->maxValue(fn (Get $get) => $get('quantite_max') ?? 1)
-            ->columnSpan(1),
+                        Forms\Components\TextInput::make('quantite')
+                            ->label('Quantité')
+                            ->numeric()
+                            ->default(1)
+                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                $quantiteMax = $get('quantite_max') ?? 1;
+                                $quantite = min($state, $quantiteMax);
+                                if ($state > $quantiteMax) {
+                                    $set('quantite', $quantite);
+                                }
+                                if ($state < 0) {
+                                    $set('quantite', 0);
+                                }
+                                if ($produit = Produit::find($get('produit_id'))) {
+                                    $set('prix', $produit->prix * $quantite);
+                                }
+                            })
+                            ->live()
+                            ->disabled(fn (Forms\Get $get) => $get('quantite_max') === null)
+                            ->reactive()
+                            ->maxValue(fn (Forms\Get $get) => $get('quantite_max') ?? 1)
+                            ->minValue(0)
+                            ->columnSpan(1),
 
-                            Forms\Components\TextInput::make('prix')
-                                ->label('Prix')
-                                ->disabled()
-                                ->dehydrated()
-                                ->numeric()
-                                ->default(0)
-                                ->columnSpan(1),
-                        ])
-                        ->defaultItems(1)
-                        ->hiddenLabel()
-                        ->addActionLabel('Ajouter un produit')
-                        ->reorderable(false)
-                        ->itemLabel("Produit")
-                        ->columns(4)
-                ])
-                ->columnSpan(['lg' => 2]),
+                        Forms\Components\TextInput::make('prix')
+                            ->label('Prix')
+                            ->disabled()
+                            ->dehydrated()
+                            ->numeric()
+                            ->default(0)
+                            ->columnSpan(1),
+                    ])
+                    ->defaultItems(1)
+                    ->hiddenLabel()
+                    ->addActionLabel('Ajouter un produit')
+                    ->reorderable(false)
+                    ->itemLabel("Produit")
+                    ->columns(4),
+            ])
+            ->columnSpan(['lg' => 2]),
 
-            Forms\Components\Group::make()
-                ->schema([
-                    Forms\Components\Section::make('Statut')
-                        ->schema([
-                            ToggleButtons::make('statut')
-                                ->hiddenLabel()
-                                ->options(
-                                    collect(StatutEnum::cases())
-                                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getLabel()])
-                                        ->toArray()
-                                )
-                                ->colors(
-                                    collect(StatutEnum::cases())
-                                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getColor()])
-                                        ->toArray()
-                                )
-                                ->icons(
-                                    collect(StatutEnum::cases())
-                                        ->mapWithKeys(fn (StatutEnum $statut) => [$statut->value => $statut->getIcon()])
-                                        ->toArray()
-                                )
-                                ->required()
-                                ->inline()
-                                ->default(StatutEnum::Pret->value),
-
-
-                        ]),
-
-
-                        Forms\Components\Tabs::make()
-                            ->tabs([
-                                Forms\Components\Tabs\Tab::make('Formules')
-                                    ->schema([
-                                        Forms\Components\ToggleButtons::make('formule_id')
-                                            ->label('')
-                                            ->options(
-                                                Formule::query()
-                                                    ->pluck('nom', 'id')
-                                            )
-                                            ->gridDirection('row')
-                                            ->disabled(fn (Forms\Get $get) => $get('custom_duration') !== null && $get('custom_duration') > 0)
-                                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                                if ($state !== null) {
-                                                    $set('custom_duration', null);
-                                                }
-                                            })
-                                            ->columns(2),
-                                    ]),
-
-                                Forms\Components\Tabs\Tab::make('Personnaliser')
-                                    ->schema([
-                                        Forms\Components\TextInput::make('custom_duration')
-                                            ->label('Durée')
-                                            ->numeric()
-                                            ->reactive()
-                                            ->minValue(0)
-                                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                                if ($state !== null && $state !== '') {
-                                                    $set('formule_id', null);
-                                                }
-                                            })
-                                            ->columnSpan(1),
-
-                                        Forms\Components\ToggleButtons::make('custom_unit')
-                                            ->label('Unité')
-                                            ->options([
-                                                'heures' => 'Heures',
-                                                'jours' => 'Jours',
-                                            ])
-                                            ->inline()
-                                            ->default('heures')
-                                            ->columnSpan(2),
-                                    ])
-                                    ->columns(3),
+        Forms\Components\Group::make()
+            ->schema([
+                // Choix du statut
+                Forms\Components\Section::make('Statut')
+                    ->schema([
+                        ToggleButtons::make('statut')
+                            ->hiddenLabel()
+                            ->options(collect(StatutEnum::cases())
+                                ->mapWithKeys(fn (StatutEnum $statut) => [
+                                    $statut->value => $statut->getLabel(),
+                                ])
+                                ->toArray())
+                            ->colors(collect(StatutEnum::cases())
+                                ->mapWithKeys(fn (StatutEnum $statut) => [
+                                    $statut->value => $statut->getColor(),
+                                ])
+                                ->toArray())
+                            ->icons(collect(StatutEnum::cases())
+                                ->mapWithKeys(fn (StatutEnum $statut) => [
+                                    $statut->value => $statut->getIcon(),
+                                ])
+                                ->toArray())
+                            ->required()
+                            ->inline()
+                            ->default(StatutEnum::Pret->value),
+                    ]),
+                // Choix de la formule ou personnalisation
+                Forms\Components\Tabs::make()
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Formules')
+                            ->schema([
+                                Forms\Components\ToggleButtons::make('formule_id')
+                                    ->label('')
+                                    ->options(Formule::pluck('nom', 'id'))
+                                    ->gridDirection('row')
+                                    ->disabled(fn (Forms\Get $get) => !empty($get('custom_duration')))
+                                    ->afterStateUpdated(fn ($state, Forms\Set $set) => $state !== null ? $set('custom_duration', null) : null)
+                                    ->columns(2),
                             ]),
+                        Forms\Components\Tabs\Tab::make('Personnaliser')
+                            ->schema([
+                                Forms\Components\TextInput::make('custom_duration')
+                                    ->label('Durée')
+                                    ->numeric()
+                                    ->reactive()
+                                    ->minValue(0)
+                                    ->afterStateUpdated(fn ($state, Forms\Set $set) => ($state !== null && $state !== '')
+                                        ? $set('formule_id', null)
+                                        : null)
+                                    ->columnSpan(1),
 
-                ])
-                ->columnSpan(['lg' => 1]),
+                                Forms\Components\ToggleButtons::make('custom_unit')
+                                    ->label('Unité')
+                                    ->options([
+                                        'heures' => 'Heures',
+                                        'jours'   => 'Jours',
+                                    ])
+                                    ->inline()
+                                    ->default('heures')
+                                    ->columnSpan(2),
+                            ])
+                            ->columns(3),
+                    ]),
+            ])
+            ->columnSpan(['lg' => 1]),
 
-            Forms\Components\Hidden::make('service_ids')
-                ->default(fn () => request('service_ids', ''))
-                ->dehydrated(false),
+        // Liste des services (récupérés via un champ caché)
+        Forms\Components\Hidden::make('service_ids')
+            ->default(fn () => request('service_ids', ''))
+            ->dehydrated(false),
 
-            Section::make('Services')
-                ->schema(function (Forms\Get $get, Forms\Set $set) {
-                    $serviceIds = explode(',', $get('service_ids') ?? '');
-
-                    if (empty($serviceIds)) {
-                        return [
-                            Placeholder::make('message')
-                                ->label('Aucun service sélectionné')
-                                ->content('Aucun service n\'a été trouvé.'),
-                        ];
-                    }
-
-                    $services = Service::whereIn('id', $serviceIds)->get();
-
-                    if ($services->isNotEmpty()) {
-                        $keyValueData = $services->mapWithKeys(function ($service) {
-                            return [
-                                $service->nom => number_format($service->prix, 2) . ' €',
-                            ];
-                        })->toArray();
-
-                        $total = $services->sum('prix');
-                        $set('placeholder_services_default', 'Services : ' . number_format($total, 2, ',') . ' €');
-
-                        return [
-                            KeyValue::make('services')
-                                ->hiddenLabel()
-                                ->default($keyValueData)
-                                ->addable(false)
-                                ->editableKeys(false)
-                                ->editableValues(false)
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                    $total = array_sum(array_map(function ($value) {
-                                        return (float) str_replace([' €', ','], ['', '.'], $value);
-                                    }, $state ?? []));
-                                    $set('placeholder_services', 'Services : ' . number_format($total, 2, ',') . ' €');
-                                })
-                                ->keyLabel('Nom du service')
-                                ->valueLabel('Prix'),
-                        ];
-                    }
-
+        Section::make('Services')
+            ->schema(function (Forms\Get $get, Forms\Set $set) {
+                $serviceIds = array_filter(explode(',', $get('service_ids') ?? ''));
+                if (empty($serviceIds)) {
                     return [
                         Placeholder::make('message')
                             ->label('Aucun service sélectionné')
-                            ->content('Aucun service n\'a été trouvé.'),
+                            ->content("Aucun service n'a été trouvé."),
                     ];
-                })
-                ->hidden(fn (Forms\Get $get) => empty($get('service_ids')))
-                ->columns(1)
-        ];
-    }
+                }
 
-    public static function getPaiementForm(): Forms\Components\Group
-    {
-        return Forms\Components\Group::make()
-            ->schema([
-                Forms\Components\Section::make('Crédit')
-                    ->schema([
-                        Forms\Components\TextInput::make('nombre_credits')
-                            ->label('Nombre de crédits à ajouter')
-                            ->numeric()
-                            ->default(0)
-                            ->minValue(0)
-                            ->hint(static::getHintHtml(
-                                \App\Models\Credit::query()
-                                    ->orderBy('montant', 'desc')
-                                    ->get(['montant', 'prix'])
-                                    ->toArray()
-                            ))
-                            ->columnSpan(4)
-                            ->reactive(),
+                $services = Service::whereIn('id', $serviceIds)->get();
+                if ($services->isNotEmpty()) {
+                    $keyValueData = $services->mapWithKeys(fn ($service) => [
+                        $service->nom => number_format($service->prix, 2) . ' €',
+                    ])->toArray();
 
-                        Forms\Components\Placeholder::make('solde_credit')
-                            ->label('Solde actuel')
-                            ->content(fn (Forms\Get $get) =>
-                                    Client::find($get('client_id'))?->solde_credit
-                                        ? number_format(Client::find($get('client_id'))?->solde_credit, 2, ',', ' ')
-                                        : '0,00'
-                                ),
-                    ])
-                    ->columns(5),
+                    $total = $services->sum('prix');
+                    $set('placeholder_services_default', 'Services : ' . number_format($total, 2, ',', ' ') . ' €');
 
-                Forms\Components\Section::make('Paiement')
-                    ->schema([
-                        Forms\Components\Section::make()
-                            ->schema([
-                                Forms\Components\Placeholder::make('placeholder_produits')
-                                    ->hiddenLabel()
-                                    ->content(fn (Forms\Get $get) =>
-                                        'Produits : ' . (array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])) == 0
-                                        ? '0 €'
-                                        : number_format(array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])), 2, ',', '') . ' €')
-                                    ),
-                                Forms\Components\Placeholder::make('placeholder_services')
-                                    ->hiddenLabel()
-                                    ->content(fn (Forms\Get $get) => $get('placeholder_services'))
-                                    ->default(fn (Forms\Get $get) => $get('placeholder_services_default') ?? 'Services : 0 €'),
-                                Forms\Components\Placeholder::make('placeholder_formule')
-                                    ->hiddenLabel()
-                                    ->content(function (Forms\Get $get) {
-                                        $tarif = \App\Models\Tarif::first();
+                    return [
+                        KeyValue::make('services')
+                            ->hiddenLabel()
+                            ->default($keyValueData)
+                            ->addable(false)
+                            ->editableKeys(false)
+                            ->editableValues(false)
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                $total = array_sum(array_map(fn ($value) => (float) str_replace([' €', ','], ['', '.'], $value), $state ?? []));
+                                $set('placeholder_services', 'Services : ' . number_format($total, 2, ',', ' ') . ' €');
+                            })
+                            ->keyLabel('Nom du service')
+                            ->valueLabel('Prix'),
+                    ];
+                }
 
-                                        $formuleId = $get('formule_id');
-                                        if ($formuleId) {
-                                            $formule = \App\Models\Formule::find($formuleId);
-                                            return $formule ? "Formule : " . number_format($formule->prix, 2, ',') . " €" : 'Formule non valide';
-                                        }
+                return [
+                    Placeholder::make('message')
+                        ->label('Aucun service sélectionné')
+                        ->content("Aucun service n'a été trouvé."),
+                ];
+            })
+            ->hidden(fn (Forms\Get $get) => empty($get('service_ids')))
+            ->columns(1),
+    ];
+}
 
-                                        $customDuration = $get('custom_duration');
-                                        $customUnit = $get('custom_unit');
-                                        if ($customDuration && $customUnit) {
+
+public static function getPaiementForm(): Forms\Components\Group
+{
+    return Forms\Components\Group::make()
+        ->schema([
+            // Section Crédit
+            Forms\Components\Section::make('Crédit')
+                ->schema([
+                    Forms\Components\TextInput::make('nombre_credits')
+                        ->label('Nombre de crédits à ajouter')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->columnSpan(4)
+                        ->live()
+                        ->disabled(fn (Forms\Get $get) => (bool) $get('utiliser_credit_pour_payer'))
+                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                            if (!(bool) $get('utiliser_credit_pour_payer')) {
+                                $creditsDemandes = max(0, (int) $state);
+                                $reduction     = self::calculateCreditReduction($creditsDemandes);
+                                $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
+                                $set('placeholder_credit', $creditsDemandes > 0
+                                    ? 'Crédit (achat) : ' . number_format($costForCredits, 2, ',', ' ') . ' €'
+                                    : null
+                                );
+                            }
+                            self::updateTotal($set, $get);
+                        }),
+                    Forms\Components\Group::make()
+                        ->schema([
+                            Forms\Components\Placeholder::make('solde_credit')
+                                ->label('Solde actuel')
+                                ->content(fn (Forms\Get $get) => number_format(optional(Client::find($get('client_id')))->solde_credit ?? 0, 2, ',', ' ')),
+                            Forms\Components\Toggle::make('utiliser_credit_pour_payer')
+                                ->label('Utiliser pour payer')
+                                ->default(false)
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                    if ($state) {
+                                        $client = Client::find($get('client_id'));
+                                        $soldeCredit = $client?->solde_credit ?? 0;
+                                        $totalSansCredits = self::getTotalSansCredits($get);
+                                        $discount = min($soldeCredit, $totalSansCredits);
+                                        $set('nombre_credits', -$discount);
+                                        $set('placeholder_credit', 'Réduction appliquée : -' . number_format($discount, 2, ',', ' ') . ' €');
+                                    } else {
+                                        $set('nombre_credits', 0);
+                                        $set('placeholder_credit', null);
+                                    }
+                                    self::updateTotal($set, $get);
+                                })
+                                ->disabled(fn (Forms\Get $get) => self::getTotalSansCredits($get) == 0),
+                        ]),
+                ])
+                ->columns(5),
+
+            // Section Paiement
+            Forms\Components\Section::make('Paiement')
+                ->schema([
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\Placeholder::make('placeholder_produits')
+                                ->hiddenLabel()
+                                ->hidden(fn (Forms\Get $get) => array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])) == 0)
+                                ->content(fn (Forms\Get $get) => 'Produits : ' . number_format(
+                                    array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? [])),
+                                    2,
+                                    ',',
+                                    ''
+                                ) . ' €'),
+                            Forms\Components\Placeholder::make('placeholder_services')
+                                ->hiddenLabel()
+                                ->hidden(fn (Forms\Get $get) => (float) ($get('placeholder_services_default') ?? 0) == 0)
+                                ->content(fn (Forms\Get $get) => $get('placeholder_services'))
+                                ->default(fn (Forms\Get $get) => $get('placeholder_services_default') ?? 'Services : 0 €'),
+                            Forms\Components\Placeholder::make('placeholder_formule')
+                                ->hiddenLabel()
+                                ->hidden(function (Forms\Get $get) {
+                                    $formuleId      = $get('formule_id');
+                                    $customDuration = $get('custom_duration');
+                                    $customUnit     = $get('custom_unit');
+
+                                    if ($formuleId) {
+                                        $formule = Formule::find($formuleId);
+                                        return !$formule || $formule->prix == 0;
+                                    }
+
+                                    if ($customDuration && $customUnit) {
+                                        $tarif = Tarif::first();
+                                        $prixUnitaire = $customUnit === 'heures' ? $tarif->prix_une_heure : $tarif->prix_un_jour;
+                                        return ($customDuration * $prixUnitaire) == 0;
+                                    }
+                                    return true;
+                                })
+                                ->content(function (Forms\Get $get) {
+                                    if ($formuleId = $get('formule_id')) {
+                                        $formule = Formule::find($formuleId);
+                                        return $formule
+                                            ? "Formule : " . number_format($formule->prix, 2, ',', ' ') . " €"
+                                            : 'Formule non valide';
+                                    }
+                                    if ($customDuration = $get('custom_duration')) {
+                                        if ($customUnit = $get('custom_unit')) {
+                                            $tarif = Tarif::first();
                                             $prixUnitaire = $customUnit === 'heures' ? $tarif->prix_une_heure : $tarif->prix_un_jour;
                                             $total = $customDuration * $prixUnitaire;
-                                            return "Formule : " . number_format($total, 2, ',') . " €";
+                                            return "Formule : " . number_format($total, 2, ',', ' ') . " €";
                                         }
+                                    }
+                                    return 'Formule : 0 €';
+                                }),
+                            Forms\Components\Placeholder::make('placeholder_credit')
+                                ->hiddenLabel()
+                                ->hidden(fn (Forms\Get $get) => ($get('nombre_credits') ?? 0) == 0)
+                                ->content(function (Forms\Get $get) {
+                                    $nombreCredits = $get('nombre_credits') ?? 0;
+                                    if ($nombreCredits < 0) {
+                                        return 'Crédit : -' . number_format(abs((float)$nombreCredits), 2, ',', ' ') . ' €';
+                                    }
+                                    $creditsDemandes = (int) $nombreCredits;
+                                    $reduction = self::calculateCreditReduction($creditsDemandes);
+                                    $prixTotal = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
+                                    return 'Crédit : ' . number_format(max($prixTotal, 0), 2, ',', ' ') . ' €';
+                                }),
+                            Forms\Components\Placeholder::make('placeholder_total')
+                                ->label('TOTAL :')
+                                ->reactive()
+                                ->content(fn (Forms\Get $get) => self::calculateTotal($get)),
+                        ])
+                        ->columnSpan(1),
 
-                                        return 'Formule : 0 €';
-                                    }),
-                                Placeholder::make('placeholder_credit')
-                                    ->hiddenLabel()
-                                    ->content('Crédit : 0 €'),
-                                Placeholder::make('placeholder_total')
-                                    ->hiddenLabel()
-                                    ->content('TOTAL : 0 €'),
-                            ])
-                            ->columnSpan(1),
+                    Forms\Components\Section::make('')
+                        ->schema([
+                            Forms\Components\ToggleButtons::make('moyen_paiement')
+                                ->label('Moyen de paiement')
+                                ->options([
+                                    'carte'  => 'Carte bancaire',
+                                    'espece' => 'Espèces',
+                                ])
+                                ->inline()
+                                ->required()
+                                ->reactive(),
+                        ])
+                        ->columnSpan(1),
+                ])
+                ->columns(2),
+        ]);
+}
 
-                        Forms\Components\Section::make('')
-                            ->schema([
-                                Forms\Components\ToggleButtons::make('moyen_paiement')
-                                    ->label('Moyen de paiement')
-                                    ->options(fn (Get $get) =>
-                                    $get('nombre_credits') > 0
-                                        ? [
-                                            'carte' => 'Carte bancaire',
-                                            'espece' => 'Espèces',
-                                          ]
-                                        : [
-                                            'carte' => 'Carte bancaire',
-                                            'espece' => 'Espèces',
-                                            'credit' => 'Crédit',
-                                          ]
-                                )
-                                    ->required()
-                                    ->reactive(),
-                            ])
-                            ->columnSpan(1),
-                    ])
-                    ->columns(2),
-            ]);
+
+/**
+ * Calcule le total hors crédits en cumulant le total des produits, des services et la formule ou la personnalisation.
+ */
+private static function getTotalSansCredits(Forms\Get $get): float
+{
+    $totalProduits = array_sum(array_map(fn ($produit) => $produit['prix'] ?? 0, $get('produits') ?? []));
+    $total = $totalProduits + (float) ($get('placeholder_services_default') ?? 0);
+
+    if ($formuleId = $get('formule_id')) {
+        $formule = Formule::find($formuleId);
+        $total += $formule ? $formule->prix : 0;
     }
 
-    public static function getHintHtml(array $paliers): HtmlString
-    {
-        $paliersJson = json_encode($paliers);
-        $index = null;
-        $value = null;
+    if ($customDuration = $get('custom_duration')) {
+        if ($customUnit = $get('custom_unit')) {
+            $tarif = Tarif::first();
+            $prixUnitaire = $customUnit === 'heures' ? $tarif->prix_une_heure : $tarif->prix_un_jour;
+            $total += $customDuration * $prixUnitaire;
+        }
+    }
 
-        return new HtmlString("
-    <div>
-        <span id=\"hint_nombre_credits\">Prix : 0 €</span>
-    </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const hintElement = document.getElementById('hint_nombre_credits');
-            const nombreCreditsInput = document.getElementById('data.nombre_credits');
-            const placeholders = Array.from(document.querySelectorAll('.fi-fo-placeholder'));
-            const placeholdersExceptLast = placeholders.slice(0, -1);
+    return $total;
+}
 
-            let total = 0;
-            let paliers = $paliersJson;
+/**
+ * Pour un nombre de crédits demandés, renvoie la réduction applicable
+ * (en parcourant les paliers de crédits dans l'ordre décroissant).
+ */
+private static function calculateCreditReduction(int $creditsDemandes): float
+{
+    $reduction = 0;
+    foreach (Credit::orderByDesc('montant')->get() as $palier) {
+        if ($creditsDemandes >= $palier->montant) {
+            $reduction = $palier->montant - $palier->prix;
+            break;
+        }
+    }
+    return $reduction;
+}
 
-            nombreCreditsInput.addEventListener('input', update);
+/**
+ * Calcule le total global en fonction du total hors crédits et de l'utilisation ou non des crédits.
+ */
+private static function calculateTotal(Forms\Get $get): string
+{
+    $totalSansCredits = self::getTotalSansCredits($get);
 
-            setInterval(update, 500);
+    if ((bool) ($get('utiliser_credit_pour_payer') ?? false)) {
+        $discount = abs((float) ($get('nombre_credits') ?? 0));
+        $discount = min($discount, $totalSansCredits);
+        $total = $totalSansCredits - $discount;
+    } else {
+        $creditsDemandes = max(0, (int) ($get('nombre_credits') ?? 0));
+        $reduction = self::calculateCreditReduction($creditsDemandes);
+        $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
+        $total = $totalSansCredits + $costForCredits;
+    }
 
-            function update(){
-                updateHint();
-                updatePlaceholderCredit();
-                updatePlaceholderTotal();
-            }
+    return number_format($total, 2, ',', ' ') . ' €';
+}
 
-            function updateHint() {
-                hintElement.innerHTML = 'Prix : ' + calculPrixCredit() + ' €';
-            }
-
-            function updatePlaceholderCredit() {
-                let totalCredits = calculPrixCredit();
-
-                const creditPlaceholder = document.querySelector('[for=\'data.placeholder_credit\']').nextElementSibling.querySelector('.fi-fo-placeholder');
-                if (creditPlaceholder) {
-                    creditPlaceholder.textContent = 'Crédit : ' + totalCredits + ' €';
-                }
-            }
-
-            function updatePlaceholderTotal(){
-                const total = calculTotal();
-
-                const totalPlaceholder = document.querySelector('[for=\'data.placeholder_total\']').nextElementSibling.querySelector('.fi-fo-placeholder');
-                if (totalPlaceholder) {
-                    totalPlaceholder.innerHTML = '<strong>TOTAL : ' + total.toFixed(2).replace('.', ',') + ' €</strong>';
-                }
-            }
-
-            function calculPrixCredit() {
-                let creditsDemandes = parseFloat(nombreCreditsInput.value) || 0;
-                let prixTotal = creditsDemandes;
-                for (const palier of paliers) {
-                    if (creditsDemandes >= palier.montant) {
-                        const reduction = palier.montant - palier.prix;
-                        prixTotal -= reduction;
-                        break;
-                    }
-                }
-                return creditsDemandes > 0 ? Math.max(prixTotal, 0).toFixed(2).replace('.', ',') : 0;
-            }
-
-            function calculTotal() {
-                let total = 0;
-                placeholdersExceptLast.forEach((placeholder) => {
-                    const text = placeholder.textContent.trim();
-                    const match = text.match(/[\d,\.]+/);
-                    if (match) {
-                        total += parseFloat(match[0].replace(',', '.'));
-                    }
-                });
-                return parseFloat(total);
-            }
-
-        });
-    </script>
-");
+/**
+ * Met à jour le placeholder du total.
+ */
+private static function updateTotal(Forms\Set $set, Forms\Get $get): void
+{
+    $set('placeholder_total', self::calculateTotal($get));
 }
 }

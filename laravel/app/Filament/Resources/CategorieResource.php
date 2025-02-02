@@ -30,14 +30,17 @@ class CategorieResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nom')
-                    ->required()
-                    ->maxLength(255),
-                IconPicker::make('icone')
-                    ->label('Icône')
-                    ->required()
-                    ->columns(3)
-                    ->sets(['fontawesome-solid']),
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\TextInput::make('nom')
+                            ->required()
+                            ->maxLength(255),
+                        IconPicker::make('icone')
+                            ->label('Icône')
+                            ->required()
+                            ->columns(3)
+                            ->sets(['fontawesome-solid']),
+                    ])
             ]);
     }
 

@@ -33,16 +33,14 @@ class ClientResource extends Resource
                     ->schema([
                         Forms\Components\Section::make()
                             ->schema([
-                                Forms\Components\TextInput::make('nom')
-                                    ->label('Nom')
-                                    ->required()
-                                    ->maxLength(255),
-
                                 Forms\Components\TextInput::make('prenom')
                                     ->label('Prénom')
                                     ->required()
                                     ->maxLength(255),
-
+                                Forms\Components\TextInput::make('nom')
+                                    ->label('Nom')
+                                    ->required()
+                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('email')
                                     ->label('Email')
                                     ->required()
@@ -111,41 +109,38 @@ class ClientResource extends Resource
                     }),
 
                 Tables\Columns\SelectColumn::make('ordinateur_id')
-    ->label('Ordinateur')
-    ->options(function (Client $record) {
-        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
-            ->where('client_id', '!=', $record->id)
-            ->pluck('ordinateur_id')
-            ->toArray();
+                    ->label('Ordinateur')
+                    ->options(function (Client $record) {
+                        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
+                            ->where('client_id', '!=', $record->id)
+                            ->pluck('ordinateur_id')
+                            ->toArray();
 
-        return [
-            null => 'Aucun ordinateur',
-        ] + Ordinateur::where('est_allumé', true)
-            ->where('en_maintenance', false)
-            ->whereNotIn('id', $ordinateursUtilises) // Exclure les ordinateurs utilisés
-            ->pluck('nom', 'id')
-            ->toArray();
-    })
-    ->updateStateUsing(function (Client $record, $state) {
-        if ($state) {
-            // Si un ordinateur est sélectionné
-            $record->connecterOrdinateur($state);
-        } else {
-            // Si aucun ordinateur n'est sélectionné
-            $record->deconnecterOrdinateur();
-        }
-    })
-    ->default(null) // Par défaut, aucun ordinateur sélectionné
-    ->selectablePlaceholder(false) // Pas de placeholder
-    ->disabled(fn (?Client $record) => !$record->est_present) // Désactiver si le client n'est pas présent
-    ->getStateUsing(function (Client $record) {
-        // Récupérer l'ordinateur actuellement utilisé par ce client
-        $historique = $record->historiqueOrdinateurs()
-            ->whereNull('fin_utilisation')
-            ->first();
+                        return [
+                            null => 'Aucun ordinateur',
+                        ] + Ordinateur::where('est_allumé', true)
+                            ->where('en_maintenance', false)
+                            ->whereNotIn('id', $ordinateursUtilises)
+                            ->pluck('nom', 'id')
+                            ->toArray();
+                    })
+                    ->updateStateUsing(function (Client $record, $state) {
+                        if ($state) {
+                            $record->connecterOrdinateur($state);
+                        } else {
+                            $record->deconnecterOrdinateur();
+                        }
+                    })
+                    ->default(null)
+                    ->selectablePlaceholder(false)
+                    ->disabled(fn (?Client $record) => !$record->est_present)
+                    ->getStateUsing(function (Client $record) {
+                        $historique = $record->historiqueOrdinateurs()
+                            ->whereNull('fin_utilisation')
+                            ->first();
 
-        return $historique ? $historique->ordinateur_id : null;
-    }),
+                        return $historique ? $historique->ordinateur_id : null;
+                    }),
 
 
                 Tables\Columns\TextColumn::make('solde_credit')
@@ -166,7 +161,6 @@ class ClientResource extends Resource
                     ->button()
                     ->hiddenLabel()
                     ->icon('heroicon-o-shopping-bag'),
-                Tables\Actions\EditAction::make(),
             ])
             ->poll('2s')
             ->defaultSort('est_present', 'desc');

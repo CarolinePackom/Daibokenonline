@@ -29,13 +29,17 @@ class CreditResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('prix')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('montant')
-                    ->label('Montant crédité')
-                    ->required()
-                    ->numeric(),
+                Forms\Components\Section::make('')
+                    ->schema([
+                        Forms\Components\TextInput::make('montant')
+                            ->label('Montant crédité')
+                            ->required()
+                            ->numeric(),
+                        Forms\Components\TextInput::make('prix')
+                            ->required()
+                            ->numeric(),
+                    ])
+                    ->columns(2),
             ]);
     }
 
