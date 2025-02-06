@@ -1,17 +1,26 @@
-# Utilisation d'une image légère pour Java
-FROM openjdk:17-slim
+# Base avec Java et outils NFC
+FROM ubuntu:22.04
 
-# Installer les dépendances nécessaires pour les lecteurs NFC
-RUN apt-get update && \
-    apt-get install -y pcscd pcsc-tools libpcsclite1 usbutils tini && \
-    rm -rf /var/lib/apt/lists/*
+# Installation des dépendances NFC et Java
+RUN apt-get update && apt-get install -y \
+    openjdk-17-jdk \
+    pcscd \
+    pcsc-tools \
+    libpcsclite1 \
+    libpcsclite-dev \
+    usbutils \
+    && apt-get clean
 
-# Utiliser tini pour gérer correctement les processus
-ENTRYPOINT ["/usr/bin/tini", "--"]
-
-# Copier le fichier compilé .class
+# Définition du répertoire de travail
 WORKDIR /app
-COPY NFCReader.class /app
 
-# Commande pour démarrer `pcscd` en arrière-plan et Java
-CMD ["sh", "-c", "pcscd --foreground & sleep 2 && exec java NFCReader"]
+# Copier le fichier source
+COPY NFCDetector.java /app/
+
+# Compilation du programme Java
+RUN javac NFCDetector.java
+
+# Exécuter `pcscd` puis lancer Java
+CMD /usr/sbin/pcscd --foreground --debug & \
+    sleep 2 && \
+    java NFCDetector
