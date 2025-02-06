@@ -1,26 +1,23 @@
-# Base avec Java et outils NFC
-FROM ubuntu:22.04
+FROM openjdk:17-slim
 
-# Installation des dépendances NFC et Java
+# Installer les paquets nécessaires
 RUN apt-get update && apt-get install -y \
-    openjdk-17-jdk \
     pcscd \
     pcsc-tools \
     libpcsclite1 \
-    libpcsclite-dev \
+    libccid \
     usbutils \
-    && apt-get clean
+    && rm -rf /var/lib/apt/lists/*
 
-# Définition du répertoire de travail
+# Ajouter les drivers pour le lecteur NFC
+COPY ifd-ccid.bundle /usr/lib/pcsc/drivers/
+
+# Copier le programme NFCReader
 WORKDIR /app
+COPY NFCReader.java .
 
-# Copier le fichier source
-COPY NFCDetector.java /app/
+# Compiler le programme
+RUN javac NFCReader.java
 
-# Compilation du programme Java
-RUN javac NFCDetector.java
-
-# Exécuter `pcscd` puis lancer Java
-CMD /usr/sbin/pcscd --foreground --debug & \
-    sleep 2 && \
-    java NFCDetector
+# Démarrer le service pcscd et exécuter le programme
+CMD pcscd --foreground & java NFCReader
