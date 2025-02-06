@@ -1,106 +1,74 @@
 import javax.smartcardio.*;
-import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class NFCReader {
-    private static final byte[] GET_UID_COMMAND = new byte[]{(byte) 0xFF, (byte) 0xCA, 0x00, 0x00, 0x00};
+    // Commande pour récupérer l'UID (pour de nombreux lecteurs)
+    private static final byte[] GET_UID_COMMAND = new byte[]{(byte)0xFF, (byte)0xCA, (byte)0x00, (byte)0x00, (byte)0x00};
 
     public static void main(String[] args) {
-        // Vérifier que pcscd tourne bien avant de démarrer
-        waitForPCSC();
-
-        // Trouver le bon lecteur NFC
-        CardTerminal terminal = findNFCTerminal();
-        if (terminal == null) {
-            System.err.println("Aucun lecteur NFC détecté !");
-            return;
-        }
-        System.out.println("Lecteur NFC utilisé : " + terminal.getName());
-
-        // Boucle de lecture des cartes NFC
-        while (true) {
-            try {
-                terminal.waitForCardPresent(0);
-                readCard(terminal);
-                terminal.waitForCardAbsent(0);
-            } catch (Exception e) {
-                System.err.println("Erreur de lecture de la carte : " + e.getMessage());
-            }
-        }
-    }
-
-    private static void readCard(CardTerminal terminal) {
         try {
-            Card card = terminal.connect("*");
-            CardChannel channel = card.getBasicChannel();
-
-            ResponseAPDU response = channel.transmit(new CommandAPDU(GET_UID_COMMAND));
-            if (response.getSW1() == 0x90 && response.getSW2() == 0x00) {
-                String uidHex = bytesToHex(response.getData());
-
-                new Thread(() -> sendUIDToServer(uidHex)).start();
-                System.out.println("Carte détectée : " + uidHex);
-            } else {
-                System.err.println("Erreur de lecture (SW1/SW2 incorrects)");
-            }
-            card.disconnect(false);
-        } catch (CardException e) {
-            System.err.println("Problème avec la carte NFC : " + e.getMessage());
-        }
-    }
-
-    private static CardTerminal findNFCTerminal() {
-        try {
+            // Récupération du TerminalFactory et de la liste des lecteurs connectés
             TerminalFactory factory = TerminalFactory.getDefault();
             List<CardTerminal> terminals = factory.terminals().list();
-            if (!terminals.isEmpty()) return terminals.get(0);
-        } catch (Exception e) {
-            System.err.println("Impossible de récupérer les lecteurs NFC via javax.smartcardio !");
-        }
 
-        System.err.println("Essai de détection via `lsusb`...");
-        if (isNFCReaderConnected()) {
-            System.out.println("Lecteur détecté via lsusb, mais pas pris en charge par javax.smartcardio.");
-        }
-        return null;
-    }
+            if (terminals.isEmpty()) {
+                System.out.println("Aucun lecteur NFC détecté.");
+                return;
+            }
 
-    private static boolean isNFCReaderConnected() {
-        try {
-            Process process = new ProcessBuilder("lsusb").start();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.contains("072F:2200")) { // ID du lecteur ACS ACR122U
-                    return true;
+            CardTerminal terminal = terminals.get(0);
+            System.out.println("Lecteur NFC utilisé : " + terminal.getName());
+
+            // Boucle infinie pour surveiller la présence de carte
+            while (true) {
+                // Attente de la présence d'une carte (le paramètre 0 signifie attente infinie)
+                terminal.waitForCardPresent(0);
+
+                Card card = null;
+                try {
+                    // Connexion à la carte
+                    card = terminal.connect("*");
+                    CardChannel channel = card.getBasicChannel();
+
+                    // Envoi de la commande pour obtenir l'UID
+                    ResponseAPDU response = channel.transmit(new CommandAPDU(GET_UID_COMMAND));
+
+                    // Vérification du statut (0x9000 signifie succès)
+                    if (response.getSW() == 0x9000) {
+                        String uidHex = bytesToHex(response.getData());
+                        System.out.println("UID détecté : " + uidHex);
+
+                        // Envoi asynchrone de l'UID vers le serveur Laravel
+                        new Thread(() -> sendUIDToServer(uidHex)).start();
+                    } else {
+                        System.err.println("Erreur lors de la lecture, SW: "
+                                + Integer.toHexString(response.getSW()));
+                    }
+                } catch (CardException e) {
+                    System.err.println("Erreur de lecture de la carte : " + e.getMessage());
+                } finally {
+                    // Déconnexion de la carte si elle a été connectée
+                    if (card != null) {
+                        try {
+                            card.disconnect(false);
+                        } catch (CardException e) {
+                            System.err.println("Erreur lors de la déconnexion de la carte : " + e.getMessage());
+                        }
+                    }
+                    // Attente que la carte soit retirée avant de continuer
+                    terminal.waitForCardAbsent(0);
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Erreur lors de l'exécution de lsusb : " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return false;
     }
 
-    private static void waitForPCSC() {
-        for (int i = 0; i < 10; i++) {
-            try {
-                Process process = new ProcessBuilder("pgrep", "-x", "pcscd").start();
-                if (process.waitFor() == 0) {
-                    System.out.println("pcscd est actif !");
-                    return;
-                }
-            } catch (Exception ignored) {}
-            System.out.println("pcscd non détecté, nouvelle tentative...");
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException ignored) {}
-        }
-        System.err.println("pcscd n'a pas démarré après plusieurs tentatives.");
-        System.exit(1);
-    }
-
+    // Méthode utilitaire pour convertir un tableau de bytes en chaîne hexadécimale
     private static String bytesToHex(byte[] bytes) {
         StringBuilder hexString = new StringBuilder();
         for (byte b : bytes) {
@@ -109,25 +77,39 @@ public class NFCReader {
         return hexString.toString();
     }
 
+    // Méthode pour envoyer l'UID vers votre API Laravel
     private static void sendUIDToServer(String uid) {
+        HttpURLConnection connection = null;
         try {
+            // Adaptez l'URL selon la configuration de votre serveur
             URL url = new URL("http://localhost/api/scan");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
             connection.setDoOutput(true);
 
+            // Construction du JSON à envoyer
             String jsonInput = "{\"id_nfc\": \"" + uid + "\"}";
+
+            // Envoi du JSON
             try (OutputStream os = connection.getOutputStream()) {
-                os.write(jsonInput.getBytes("utf-8"));
+                byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
             }
 
             int responseCode = connection.getResponseCode();
-            if (responseCode != 200) {
-                System.err.println("Erreur du serveur : " + responseCode);
+            if (responseCode == HttpURLConnection.HTTP_OK
+                    || responseCode == HttpURLConnection.HTTP_CREATED) {
+                System.out.println("UID envoyé avec succès au serveur.");
+            } else {
+                System.err.println("Erreur du serveur lors de l'envoi de l'UID, code réponse: " + responseCode);
             }
         } catch (Exception e) {
             System.err.println("Erreur lors de l'envoi de l'UID : " + e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 }
