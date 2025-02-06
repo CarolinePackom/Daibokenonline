@@ -26,7 +26,7 @@ return new class extends Migration
             $table->enum('moyen_paiement', ['carte', 'espece', 'credit', 'autre'])->nullable();
 
             // Crédits
-            $table->integer('nombre_credits')->default(0);
+            $table->decimal('nombre_credits', 10, 2)->default(0);
 
             // Formule
             $table->foreignId('formule_id')->nullable()->constrained()->onDelete('set null');
@@ -34,6 +34,9 @@ return new class extends Migration
             // Heures ou jours achetés
             $table->integer('nombre_heures')->nullable();
             $table->integer('nombre_jours')->nullable();
+
+            // Total
+            $table->decimal('total', 10, 2);
 
             $table->timestamps();
         });

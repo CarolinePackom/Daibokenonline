@@ -25,6 +25,7 @@ class Vente extends Model
 
     protected $casts = [
         'statut' => StatutEnum::class,
+        'nombre_credit' => 'float',
     ];
 
     public function client()
@@ -109,82 +110,42 @@ class Vente extends Model
 }
 
 
-
     public static function prepareVenteData(array $data): array
-    {
-        $data['user_id'] = auth()->id();
-
-        // 🔥 Vérification des IDs valides
-        $data['service_ids'] = array_filter(
-            isset($data['service_ids']) ? explode(',', $data['service_ids']) : [],
-            fn($id) => is_numeric($id)
-        );
-
-        $data['produits'] = $data['produits'] ?? [];
-
-        // ✅ Vérification et récupération de la formule
-        $formuleId = !empty($data['formule_id']) && Formule::where('id', $data['formule_id'])->exists()
-            ? $data['formule_id']
-            : null;
-
-        // ✅ Si une durée personnalisée est utilisée, elle prime sur une formule
-        if (!empty($data['custom_duration']) && !empty($data['custom_unit'])) {
-            $formuleId = null;
-        }
-
-        $data['formule_id'] = $formuleId;
-        $data['nombre_heures'] = $data['custom_unit'] === 'heures' ? $data['custom_duration'] : null;
-        $data['nombre_jours'] = $data['custom_unit'] === 'jours' ? $data['custom_duration'] : null;
-
-        return $data;
-    }
-
-
-    public function getTotalAttribute(): float
 {
-    $total = 0;
-    $totalCredit = 0;
+    $data['user_id'] = auth()->id();
 
-    // Calcul du total des produits
-    foreach ($this->produits as $produit) {
-        $total += $produit->prix * $produit->pivot->quantite;
+    // Convertir en float pour conserver le signe négatif le cas échéant
+    $data['nombre_credits'] = isset($data['nombre_credits']) ? (float)$data['nombre_credits'] : 0;
+
+    // Vérification des IDs valides pour service_ids
+    $data['service_ids'] = array_filter(
+        isset($data['service_ids']) ? explode(',', $data['service_ids']) : [],
+        fn($id) => is_numeric($id)
+    );
+
+    $data['produits'] = $data['produits'] ?? [];
+
+    // Vérification et récupération de la formule
+    $formuleId = (!empty($data['formule_id']) && Formule::where('id', $data['formule_id'])->exists())
+        ? $data['formule_id']
+        : null;
+
+    // Si une durée personnalisée est utilisée, elle prime sur une formule
+    if (!empty($data['custom_duration']) && !empty($data['custom_unit'])) {
+        $formuleId = null;
     }
+    $data['formule_id'] = $formuleId;
+    $data['nombre_heures'] = (isset($data['custom_duration']) && $data['custom_unit'] === 'heures')
+        ? (int)$data['custom_duration']
+        : null;
+    $data['nombre_jours'] = (isset($data['custom_duration']) && $data['custom_unit'] === 'jours')
+        ? (int)$data['custom_duration']
+        : null;
 
-    // Ajout du prix des services
-    foreach ($this->services as $service) {
-        $total += $service->prix;
-    }
-
-    // Ajout du prix de la formule sélectionnée
-    if ($this->formule) {
-        $total += $this->formule->prix;
-    }
-
-    // Gestion du cas où la durée et l'unité sont personnalisées
-    if ($this->custom_duration && $this->custom_unit) {
-        $tarif = \App\Models\Tarif::first();
-        $prixUnitaire = $this->custom_unit === 'heures' ? $tarif->prix_une_heure : $tarif->prix_un_jour;
-        $total += $this->custom_duration * $prixUnitaire;
-    }
-
-    // Calcul du coût des crédits demandés
-    if ($this->nombre_credits > 0) {
-        $creditsDemandes = (int) $this->nombre_credits;
-        foreach (Credit::orderByDesc('montant')->get() as $palier) {
-            if ($creditsDemandes >= $palier->montant) {
-                $reduction = $palier->montant - $palier->prix;
-                $totalCredit = $creditsDemandes - $reduction;
-                break;
-            }
-        }
-
-        if ($totalCredit > 0) {
-            $total += $totalCredit;
-        } else {
-            $total += $creditsDemandes;
-        }
-    }
-
-    return $total;
+    return $data;
 }
+
+
+
+
 }

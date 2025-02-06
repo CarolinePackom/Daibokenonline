@@ -51,10 +51,10 @@ class VenteResource extends Resource
                 ->searchable(),
 
             Tables\Columns\TextColumn::make('total')
-                ->label('Total')
-                ->formatStateUsing(fn ($state) => number_format($state, 2, ',', ' ') . ' €')
-                ->color('primary')
-                ->sortable(),
+    ->label('Total')
+    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', ' ') . ' €')
+    ->color('primary')
+    ->sortable(),
 
             // Statut : SelectColumn avec options issues de l'enum, valeur par défaut et sans placeholder
             Tables\Columns\SelectColumn::make('statut')
@@ -71,30 +71,39 @@ class VenteResource extends Resource
             // Moyen de paiement : conversion de la valeur stockée en libellé complet
             Tables\Columns\TextColumn::make('moyen_paiement')
                 ->label('Moyen de paiement')
-                ->formatStateUsing(fn ($state) => $state === 'carte' ? 'Carte bancaire' : ($state === 'espece' ? 'Espèce' : $state))
+                ->formatStateUsing(fn ($state) => match ($state) {
+                    'carte' => 'Carte bancaire',
+                    'espece' => 'Espèce',
+                    'credit' => 'Crédit',
+                    default => ucfirst($state ?? ''),
+                })
                 ->sortable()
                 ->searchable(),
 
             // Crédits : ajout du préfixe "+ " pour un montant positif ou "- " pour un montant négatif
             Tables\Columns\TextColumn::make('nombre_credits')
                 ->label('Crédits')
-                ->formatStateUsing(fn ($state) => ($state < 0 ? '- ' : '+ ') . abs($state))
+                ->formatStateUsing(fn ($state) => $state === null ? '' : (
+                    $state == 0 ? '0' : ($state < 0 ? '- ' : '+ ') . abs($state)
+                ))
                 ->sortable(),
 
             // Formule : Affichage du nom de la formule ou, si personnalisé, la durée et l'unité suivie de "(personnalisé)"
             Tables\Columns\TextColumn::make('formule_info')
-                ->label('Formule')
-                ->getStateUsing(function (\App\Models\Vente $record) {
-                    if ($record->custom_duration) {
-                        $unit = $record->custom_unit === 'heures' ? 'Heures' : 'Jours';
-                        return "{$record->custom_duration} {$unit} (personnalisé)";
-                    } elseif ($record->formule) {
-                        return $record->formule->nom;
-                    }
-                    return '';
-                })
-                ->sortable()
-                ->searchable(),
+    ->label('Formule')
+    ->getStateUsing(function (\App\Models\Vente $record) {
+        if (!is_null($record->nombre_heures)) {
+            return "{$record->nombre_heures} Heures (personnalisé)";
+        } elseif (!is_null($record->nombre_jours)) {
+            return "{$record->nombre_jours} Jours (personnalisé)";
+        } elseif ($record->formule) {
+            return $record->formule->nom;
+        }
+        return '';
+    })
+    ->sortable()
+    ->searchable(),
+
 
             // Créé par : Affichage du nom de l'utilisateur qui a créé la vente (relation "user")
             Tables\Columns\TextColumn::make('user.name')
@@ -117,7 +126,11 @@ class VenteResource extends Resource
             ])
             ->bulkActions([
                 // ...
-            ]);
+            ])
+            ->defaultSort(fn ($query) =>
+                $query->orderByRaw("CASE WHEN statut = ? THEN 1 ELSE 0 END", [StatutEnum::Pret->value])
+                      ->orderBy('created_at', 'desc')
+            );
     }
 
     public static function getRelations(): array
@@ -400,19 +413,17 @@ class VenteResource extends Resource
                             ->default(0)
                             ->columnSpan(4)
                             ->debounce(500)
-                            ->disabled(fn (Get $get) => (bool) $get('utiliser_credit_pour_payer'))
+                            ->dehydrated(true)
+                            ->readOnly(fn (Get $get) => (bool) $get('utiliser_credit_pour_payer'))
                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                // Si le toggle n'est pas actif et que l'utilisateur a saisi une valeur négative (par copier/coller par exemple), on force la valeur positive
                                 if (!$get('utiliser_credit_pour_payer') && $state < 0) {
                                     $set('nombre_credits', 0);
                                 }
-                                // Dès qu'un montant est saisi manuellement, on désactive le toggle
-                                if (!$get('utiliser_credit_pour_payer') && (int)$state !== 0) {
+                                if (!$get('utiliser_credit_pour_payer') && (float)$state !== 0) {
                                     $set('utiliser_credit_pour_payer', false);
                                 }
-                                // Mise à jour du coût pour crédits en cas d'achat
-                                $creditsDemandes = max(0, (int)$state);
-                                $reduction     = self::calculateCreditReduction($creditsDemandes);
+                                $creditsDemandes = max(0, (float)$state);
+                                $reduction = self::calculateCreditReduction($creditsDemandes);
                                 $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
                                 $set('placeholder_credit', $creditsDemandes > 0
                                     ? 'Crédit (achat) : ' . number_format($costForCredits, 2, ',', ' ') . ' €'
@@ -431,21 +442,22 @@ class VenteResource extends Resource
                                     ->reactive()
                                     ->hidden(fn (Get $get) => (optional(Client::find($get('client_id')))->solde_credit ?? 0) <= 0)
                                     // Désactivation si l'utilisateur a saisi manuellement un montant positif
-                                    ->disabled(fn (Get $get) => (int)$get('nombre_credits') > 0)
+                                    ->disabled(fn (Get $get) => (float)$get('nombre_credits') > 0 || self::calculateTotal($get) == 0)
                                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                         if ($state) {
-                                            $client = Client::find($get('client_id'));
-                                            $soldeCredit = $client?->solde_credit ?? 0;
-                                            $totalSansCredits = self::getTotalSansCredits($get);
-                                            $discount = min($soldeCredit, $totalSansCredits);
-                                            $set('nombre_credits', -$discount);
-                                            $set('placeholder_credit', 'Réduction appliquée : -' . number_format($discount, 2, ',', ' ') . ' €');
-                                            // Sélection automatique du moyen de paiement "Crédit"
-                                            $set('moyen_paiement', 'credit');
-                                        } else {
-                                            $set('nombre_credits', 0);
-                                            $set('placeholder_credit', null);
-                                        }
+    // Le client utilise ses crédits
+    $client = Client::find($get('client_id'));
+    $soldeCredit = $client?->solde_credit ?? 0;
+    $totalSansCredits = self::getTotalSansCredits($get);
+    $discount = min($soldeCredit, $totalSansCredits);
+    $set('nombre_credits', -$discount); // Ici, la valeur sera négative (ex. -50)
+    $set('placeholder_credit', 'Réduction appliquée : -' . number_format($discount, 2, ',', ' ') . ' €');
+    $set('moyen_paiement', 'credit');
+} else {
+    $set('nombre_credits', 0);
+    $set('placeholder_credit', null);
+}
+
                                         self::updateTotal($set, $get);
                                     }),
                             ]),
@@ -508,21 +520,18 @@ class VenteResource extends Resource
                                     }),
                                 Forms\Components\Placeholder::make('placeholder_credit')
                                     ->hiddenLabel()
-                                    ->hidden(fn (Get $get) => ($get('nombre_credits') ?? 0) == 0)
-                                    ->content(function (Get $get) {
-                                        $nombreCredits = $get('nombre_credits') ?? 0;
-                                        if ($nombreCredits < 0) {
-                                            return 'Crédit : -' . number_format(abs((float)$nombreCredits), 2, ',', ' ') . ' €';
-                                        }
-                                        $creditsDemandes = (int) $nombreCredits;
-                                        $reduction = self::calculateCreditReduction($creditsDemandes);
-                                        $prixTotal = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
-                                        return 'Crédit : ' . number_format(max($prixTotal, 0), 2, ',', ' ') . ' €';
-                                    }),
-                                Forms\Components\Placeholder::make('placeholder_total')
+                                    ->hidden(fn (Get $get) => is_null($get('nombre_credits')) || (float) $get('nombre_credits') == 0)
+                                    ->content(fn (Get $get) => (float) $get('nombre_credits') < 0
+                                        ? 'Crédit : -' . number_format(abs((float) $get('nombre_credits')), 2, ',', ' ') . ' €'
+                                        : 'Crédit : ' . number_format((float) $get('nombre_credits'), 2, ',', ' ') . ' €'),
+                                Forms\Components\TextInput::make('total')
                                     ->label('TOTAL :')
                                     ->reactive()
-                                    ->content(fn (Get $get) => self::calculateTotal($get)),
+                                    ->readOnly()
+                                    ->dehydrated(true)
+                                    ->default(fn (Get $get) => self::calculateTotal($get))
+                                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', ' ') . ' €'),
+
                             ])
                             ->columnSpan(1),
                         Section::make('')
@@ -553,6 +562,7 @@ class VenteResource extends Resource
             ]);
     }
 
+
     /**
      * Calcule le total hors crédits (produits + services + formule/personnalisation).
      */
@@ -580,7 +590,7 @@ class VenteResource extends Resource
     /**
      * Pour un nombre de crédits demandés, renvoie la réduction applicable.
      */
-    private static function calculateCreditReduction(int $creditsDemandes): float
+    private static function calculateCreditReduction(float $creditsDemandes): float
     {
         $reduction = 0;
         foreach (Credit::orderByDesc('montant')->get() as $palier) {
@@ -595,29 +605,31 @@ class VenteResource extends Resource
     /**
      * Calcule le total global en fonction du total hors crédits et de l'utilisation ou non des crédits.
      */
-    private static function calculateTotal(Get $get): string
-    {
-        $totalSansCredits = self::getTotalSansCredits($get);
+    private static function calculateTotal(Get $get): float
+{
+    $totalSansCredits = self::getTotalSansCredits($get);
 
-        if ((bool) ($get('utiliser_credit_pour_payer') ?? false)) {
-            $discount = abs((float) ($get('nombre_credits') ?? 0));
-            $discount = min($discount, $totalSansCredits);
-            $total = $totalSansCredits - $discount;
-        } else {
-            $creditsDemandes = max(0, (int) ($get('nombre_credits') ?? 0));
-            $reduction = self::calculateCreditReduction($creditsDemandes);
-            $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
-            $total = $totalSansCredits + $costForCredits;
-        }
-
-        return number_format($total, 2, ',', ' ') . ' €';
+    if ((bool) ($get('utiliser_credit_pour_payer') ?? false)) {
+        $discount = abs((float) ($get('nombre_credits') ?? 0));
+        $discount = min($discount, $totalSansCredits);
+        $total = $totalSansCredits - $discount;
+    } else {
+        $creditsDemandes = max(0, (float) ($get('nombre_credits') ?? 0));
+        $reduction = self::calculateCreditReduction($creditsDemandes);
+        $costForCredits = $creditsDemandes > 0 ? $creditsDemandes - $reduction : 0;
+        $total = $totalSansCredits + $costForCredits;
     }
+    return round($total, 2);
+}
+
+
 
     /**
      * Met à jour le placeholder du total.
      */
     private static function updateTotal(Set $set, Get $get): void
     {
-        $set('placeholder_total', self::calculateTotal($get));
+        $set('total', self::calculateTotal($get));
     }
+
 }

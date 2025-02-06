@@ -25,10 +25,17 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::factory()->create([
-            'name' => 'Admin',
-            'username' => 'admin',
-            'email' => 'admin@daiboken.fr',
-            'password' => Hash::make('admin'),
+            'name' => 'Mathis',
+            'username' => 'mathis',
+            'email' => 'malherbe.mathis@gmail.com',
+            'password' => Hash::make('Onaimelekfc51'),
+        ]);
+
+        User::factory()->create([
+            'name' => 'Marvin',
+            'username' => 'marvin',
+            'email' => 'marvin.wth@gmail.com',
+            'password' => Hash::make('dbk'),
         ]);
 
         Service::create([
@@ -223,16 +230,6 @@ class DatabaseSeeder extends Seeder
         Categorie::create([
             'nom' => 'Bonbons',
             'icone' => 'fas-candy-cane'
-        ]);
-
-        Client::create([
-            'nom' => 'Nom',
-            'prenom' => 'Prénom',
-            'email' => 'test@gmail.com',
-            'telephone' => '0123456789',
-            'est_present' => false,
-            'id_nfc' => '1234567890',
-            'solde_credit' => 0,
         ]);
     }
 }
