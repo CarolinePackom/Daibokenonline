@@ -11,4 +11,4 @@ WORKDIR /app
 COPY NFCReader.class /app
 
 # Commande pour démarrer directement le fichier .class
-CMD ["sh", "-c", "pcscd -f & java NFCReader"]
+CMD ["sh", "-c", "pcscd && java NFCReader"]
