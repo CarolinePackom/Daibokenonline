@@ -6,11 +6,9 @@ RUN apt-get update && apt-get install -y \
     pcsc-tools \
     libpcsclite1 \
     libccid \
+    libacsccid1 \
     usbutils \
     && rm -rf /var/lib/apt/lists/*
-
-# Ajouter les drivers pour le lecteur NFC
-COPY ifd-ccid.bundle /usr/lib/pcsc/drivers/
 
 # Copier le programme NFCReader
 WORKDIR /app
