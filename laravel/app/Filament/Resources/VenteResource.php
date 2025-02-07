@@ -160,16 +160,18 @@ class VenteResource extends Resource
                         ->schema([
                             Forms\Components\Select::make('client_id')
                                 ->label('Client')
-                                ->options(fn () => Client::whereNull('archived_at')
-                                    ->get()
-                                    ->mapWithKeys(fn ($client) => [
-                                        $client->id => ucfirst(strtolower($client->prenom))
-                                            . ' ' . ucfirst(strtolower($client->nom)),
-                                    ]))
+                                ->options(fn () =>
+                                    Client::whereNull('archived_at')
+                                        ->orderByRaw("CASE WHEN prenom = 'Visiteur' THEN 0 ELSE 1 END") // Met "Visiteur" en premier
+                                        ->orderBy('nom') // Trie ensuite par nom
+                                        ->get()
+                                        ->mapWithKeys(fn ($client) => [
+                                            $client->id => ucfirst(strtolower($client->prenom))
+                                                . ' ' . ucfirst(strtolower($client->nom)),
+                                        ])
+                                )
                                 ->searchable()
                                 ->prefixIcon('heroicon-m-user')
-                                ->default($resolvedClientId)
-                                ->disabled($resolvedClientId !== null)
                                 ->required()
                                 ->placeholder('Sélectionnez un client'),
                         ]),

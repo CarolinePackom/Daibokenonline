@@ -231,5 +231,11 @@ class DatabaseSeeder extends Seeder
             'nom' => 'Bonbons',
             'icone' => 'fas-candy-cane'
         ]);
+
+        Client::create([
+            'prenom' => 'Visiteur',
+            'nom' => ' ',
+            'email' => 'visiteur@daiboken.fr',
+        ]);
     }
 }
