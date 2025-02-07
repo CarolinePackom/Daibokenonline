@@ -49,18 +49,15 @@ services:
             context: ./nfc
             dockerfile: Dockerfile
         container_name: nfc_reader
-        privileged: true  # Accès total au matériel
+        privileged: true
         environment:
             - NFC_DEVICE=/dev/bus/usb
         devices:
-            - /dev/bus/usb:/dev/bus/usb  # Monte l'USB dans le conteneur
+            - /dev/bus/usb:/dev/bus/usb 
         volumes:
-            - /dev/bus/usb:/dev/bus/usb  # Accès direct au périphérique USB
+            - /dev/bus/usb:/dev/bus/usb
         networks:
             - sail
-        restart: "no"  # Désactive le redémarrage en boucle pour le debug
-    
-        
 
 networks:
     sail:
