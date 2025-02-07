@@ -44,21 +44,6 @@ services:
             - sail
         restart: always
 
-    nfc_reader:
-        build:
-            context: ./nfc
-            dockerfile: Dockerfile
-        container_name: nfc_reader
-        privileged: true
-        environment:
-            - NFC_DEVICE=/dev/bus/usb
-        devices:
-            - /dev/bus/usb:/dev/bus/usb 
-        volumes:
-            - /dev/bus/usb:/dev/bus/usb
-        networks:
-            - sail
-
 networks:
     sail:
         driver: bridge
