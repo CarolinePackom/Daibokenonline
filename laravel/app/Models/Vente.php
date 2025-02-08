@@ -81,6 +81,10 @@ class Vente extends Model
             }
         }
 
+        // ✅ Correction du total pour s'assurer qu'il est bien un `float`
+        $vente->total = (float) str_replace([',', '€'], ['.', ''], $data['total']);
+        $vente->save();
+
         // ✅ Ajout des produits vendus et mise à jour des stocks
         $produitsToAttach = [];
         foreach ($data['produits'] as $produit) {
@@ -115,7 +119,7 @@ class Vente extends Model
     $data['user_id'] = auth()->id();
 
     // Convertir en float pour conserver le signe négatif le cas échéant
-    $data['nombre_credits'] = isset($data['nombre_credits']) ? (float)$data['nombre_credits'] : 0;
+    $data['nombre_credits'] = isset($data['nombre_credits']) ? (float) $data['nombre_credits'] : 0;
 
     // Vérification des IDs valides pour service_ids
     $data['service_ids'] = array_filter(
@@ -136,14 +140,20 @@ class Vente extends Model
     }
     $data['formule_id'] = $formuleId;
     $data['nombre_heures'] = (isset($data['custom_duration']) && $data['custom_unit'] === 'heures')
-        ? (int)$data['custom_duration']
+        ? (int) $data['custom_duration']
         : null;
     $data['nombre_jours'] = (isset($data['custom_duration']) && $data['custom_unit'] === 'jours')
-        ? (int)$data['custom_duration']
+        ? (int) $data['custom_duration']
         : null;
+
+    // ✅ Correction du total (suppression du symbole €, conversion correcte)
+    $data['total'] = isset($data['total'])
+        ? (float) str_replace([',', '€'], ['.', ''], $data['total']) // Convertit "0,00 €" en "0.00"
+        : 0.00;
 
     return $data;
 }
+
 
 
 

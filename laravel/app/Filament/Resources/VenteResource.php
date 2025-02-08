@@ -50,9 +50,9 @@ class VenteResource extends Resource
                 ->sortable()
                 ->searchable(),
 
-            Tables\Columns\TextColumn::make('total')
+           Tables\Columns\TextColumn::make('total')
     ->label('Total')
-    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', ' ') . ' €')
+    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', ' ') . ' €')
     ->color('primary')
     ->sortable(),
 
