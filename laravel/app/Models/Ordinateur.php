@@ -53,15 +53,39 @@ class Ordinateur extends Model
         $ssh = $this->connexionSSH();
 
         try {
+            // Supprime l'utilisateur s'il existe déjà
             $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
+            // Crée un nouvel utilisateur Windows
             $ssh->exec("net user \"{$nom_utilisateur}\" \"\" /add");
 
-            $ssh->exec('powershell -Command "Set-ItemProperty -Path \'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE\' -Name SkipUserOOBE -Value 1"');
+            // Vérifier si la session de l'utilisateur est active
+            $script = <<<POWERSHELL
+        \$UserToSwitch = "{$nom_utilisateur}"
+        \$session = query user | Where-Object { \$_ -match \$UserToSwitch }
+
+        if (\$session) {
+            \$sessionID = (\$session -split '\\s+')[2]
+            try {
+                tscon \$sessionID /dest:console
+                Write-Host "Switched to user \$UserToSwitch successfully."
+            } catch {
+                Write-Host "Failed to switch to user \$UserToSwitch. Error: \$_" -ForegroundColor Red
+            }
+        } else {
+            Write-Host "User \$UserToSwitch does not have an active session." -ForegroundColor Yellow
+            Write-Host "Please log in as \$UserToSwitch first."
+        }
+        POWERSHELL;
+
+            // Exécuter le script PowerShell
+            $ssh->exec("powershell -Command \"$script\"");
+
         } finally {
             $ssh->disconnect();
         }
     }
+
 
     public function clientActuel()
     {
