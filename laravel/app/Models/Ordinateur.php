@@ -37,7 +37,7 @@ class Ordinateur extends Model
         return $ssh;
     }
 
-    private function supprimerUtilisateur(string $nom_utilisateur):void
+    public function supprimerUtilisateur(string $nom_utilisateur):void
     {
         $ssh = $this->connexionSSH();
 
