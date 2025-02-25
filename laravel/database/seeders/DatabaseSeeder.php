@@ -107,6 +107,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Ordinateur::create([
+            'nom' => 'DBK-0',
+            'adresse_ip' => '192.168.1.39',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:FA',
+            'last_update' => now(),
+        ]);
+
+        Ordinateur::create([
             'nom' => 'DBK-1',
             'adresse_ip' => '192.168.1.1',
             'adresse_mac' => 'AA:BB:CC:DD:EE:FF',
@@ -166,13 +173,6 @@ class DatabaseSeeder extends Seeder
             'nom' => 'DBK-9',
             'adresse_ip' => '192.168.1.9',
             'adresse_mac' => 'AA:BB:CC:DD:EE:F9',
-            'last_update' => now(),
-        ]);
-
-        Ordinateur::create([
-            'nom' => 'DBK-10',
-            'adresse_ip' => '192.168.1.39',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:FA',
             'last_update' => now(),
         ]);
 
