@@ -56,14 +56,13 @@ class Ordinateur extends Model
             // Supprime l'utilisateur s'il existe déjà
             $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
-            // Crée un nouvel utilisateur Windows
-            $script = <<<POWERSHELL
-            \$UserName = "{$nom_utilisateur}"
-            net user \$UserName /add /active:yes
-            POWERSHELL;
+            $command = 'powershell -ExecutionPolicy Bypass -NoProfile -Command ';
+            $command .= '"& { net user ';
+            $command .= "'$nom_utilisateur' /add /active:yes";
+            $command .= ' }"';
 
-            // Exécuter la commande via SSH
-            $ssh->exec("powershell -Command \"$script\"");
+            // 🔹 Exécuter la commande via SSH
+            $ssh->exec($command);
 
             // Vérifier si la session de l'utilisateur est active
             $script = <<<POWERSHELL
