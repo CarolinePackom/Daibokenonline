@@ -57,7 +57,7 @@ class Ordinateur extends Model
             $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
             // Crée un nouvel utilisateur Windows
-            $ssh->exec("net user \"{$nom_utilisateur}\" \"\" /add");
+            $ssh->exec("net user \"{$nom_utilisateur}\" /add");
 
             // Vérifier si la session de l'utilisateur est active
             $script = <<<POWERSHELL
