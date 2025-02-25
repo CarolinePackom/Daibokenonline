@@ -25,7 +25,6 @@ services:
             - sail
         depends_on:
             - mariadb
-        restart: always
 
     mariadb:
         image: mariadb:latest
@@ -42,7 +41,6 @@ services:
             - mariadb_data:/var/lib/mysql
         networks:
             - sail
-        restart: always
 
 networks:
     sail:

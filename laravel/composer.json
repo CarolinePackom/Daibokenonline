@@ -16,7 +16,9 @@
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
-        "owenvoke/blade-fontawesome": "^2.8"
+        "owenvoke/blade-fontawesome": "^2.8",
+        "phpseclib/phpseclib": "^3.0",
+        "ext-sockets": "*"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",

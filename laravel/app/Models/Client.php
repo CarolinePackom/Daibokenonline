@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WindowsService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -44,11 +45,16 @@ class Client extends Model
             throw new \Exception('Ordinateur indisponible.');
         }
 
+        $ordinateur->creerUtilisateur($this->prenom . " " . $this->nom);
+
         HistoriqueOrdinateur::create([
             'client_id' => $this->id,
             'ordinateur_id' => $ordinateurId,
             'debut_utilisation' => now(),
         ]);
+
+        // Optionnel : mettre à jour l'ordinateur associé au client
+        $this->update(['ordinateur_id' => $ordinateurId]);
     }
 
     public function deconnecterOrdinateur(): void
@@ -58,9 +64,19 @@ class Client extends Model
             ->first();
 
         if ($historique) {
+            // Récupérer l'ordinateur du client
+            $ordinateur = Ordinateur::find($historique->ordinateur_id);
+
+            if ($ordinateur) {
+                // Supprimer l'utilisateur Windows
+                $nom_utilisateur = $this->prenom . " " . $this->nom;
+                $ordinateur->supprimerUtilisateurs($nom_utilisateur);
+            }
+
+            // Mettre à jour l'historique et la base de données
             $historique->update(['fin_utilisation' => now()]);
+            $this->update(['ordinateur_id' => null]);
         }
     }
-
 
 }

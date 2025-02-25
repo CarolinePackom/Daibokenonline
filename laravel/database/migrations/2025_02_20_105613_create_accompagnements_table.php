@@ -11,14 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ordinateurs', function (Blueprint $table) {
+        Schema::create('accompagnements', function (Blueprint $table) {
             $table->id();
             $table->string('nom');
-            $table->string('adresse_ip')->unique();
-            $table->string('adresse_mac')->unique();
-            $table->boolean('est_allumé')->default(true);
-            $table->boolean('en_maintenance')->default(false);
-            $table->timestamp('last_update')->nullable();
+            $table->decimal('prix_supplementaire', 8, 2);
             $table->timestamps();
         });
     }
@@ -28,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ordinateurs');
+        Schema::dropIfExists('accompagnements');
     }
 };

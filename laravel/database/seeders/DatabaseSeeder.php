@@ -7,6 +7,10 @@ use App\Models\Categorie;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\Formule;
+use App\Models\Menus\Accompagnement;
+use App\Models\Menus\Sauce;
+use App\Models\Menus\Supplement;
+use App\Models\Menus\Taille;
 use App\Models\Ordinateur;
 use App\Models\Service;
 use App\Models\Statut;
@@ -105,60 +109,70 @@ class DatabaseSeeder extends Seeder
         Ordinateur::create([
             'nom' => 'DBK-1',
             'adresse_ip' => '192.168.1.1',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:FF',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-2',
             'adresse_ip' => '192.168.1.2',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F2',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-3',
             'adresse_ip' => '192.168.1.3',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F3',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-4',
             'adresse_ip' => '192.168.1.4',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F4',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-5',
             'adresse_ip' => '192.168.1.5',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F5',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-6',
             'adresse_ip' => '192.168.1.6',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F6',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-7',
             'adresse_ip' => '192.168.1.7',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F7',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-8',
-            'adresse_ip' => '192.168.1.8',
+            'adresse_ip' => '192.168.1.29',
+            'adresse_mac' => '74-56-3C-DB-8F-17',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-9',
             'adresse_ip' => '192.168.1.9',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:F9',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-10',
-            'adresse_ip' => '192.168.1.10',
+            'adresse_ip' => '192.168.1.39',
+            'adresse_mac' => 'AA:BB:CC:DD:EE:FA',
             'last_update' => now(),
         ]);
 
@@ -236,6 +250,53 @@ class DatabaseSeeder extends Seeder
             'prenom' => 'Visiteur',
             'nom' => ' ',
             'email' => 'visiteur@daiboken.fr',
+        ]);
+
+        Taille::create([
+            'nom' => 'Normal',
+            'prix' => 7.5,
+        ]);
+
+        Taille::create([
+            'nom' => 'XL',
+            'prix' => 10,
+        ]);
+
+        Sauce::create([
+            'nom' => 'La Shōnen',
+            'description' => '🔥 La sauce des guerriers, ultra épicée',
+            'prix_supplementaire' => 0,
+        ]);
+
+        Sauce::create([
+            'nom' => 'La Sensei',
+            'description' => '🥥 La sauce des sages, une douce sauce curry coco',
+            'prix_supplementaire' => 0,
+        ]);
+
+        Accompagnement::create([
+            'nom' => 'Boeuf',
+            'prix_supplementaire' => 0,
+        ]);
+
+        Accompagnement::create([
+            'nom' => 'Poulet',
+            'prix_supplementaire' => 0,
+        ]);
+
+        Accompagnement::create([
+            'nom' => 'Crevettes',
+            'prix_supplementaire' => 0,
+        ]);
+
+        Supplement::create([
+            'nom' => 'Oeuf',
+            'prix' => 1,
+        ]);
+
+        Supplement::create([
+            'nom' => 'Fromage',
+            'prix' => 1,
         ]);
     }
 }

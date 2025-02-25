@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Validation\Rule;
 
 class OrdinateurResource extends Resource
 {
@@ -30,13 +31,15 @@ class OrdinateurResource extends Resource
                 Forms\Components\Section::make('')
                     ->schema([
                         Forms\Components\TextInput::make('nom')
-                        ->label('Nom')
-                        ->required()
-                        ->maxLength(255),
+                            ->required()
+                            ->maxLength(255),
                         Forms\Components\TextInput::make('adresse_ip')
                             ->label('Adresse IP')
                             ->required()
                             ->unique(),
+                        Forms\Components\TextInput::make('adresse_mac')
+                            ->label('Adresse MAC')
+                            ->required(),
                     ])
             ->columnSpan(1),
                 Forms\Components\Section::make('')
@@ -58,9 +61,16 @@ class OrdinateurResource extends Resource
                 Tables\Columns\TextColumn::make('nom'),
                 Tables\Columns\ToggleColumn::make('est_allumé')
                     ->label('Allumé')
-                    ->sortable()
+                    ->getStateUsing(fn (Ordinateur $record) => $record->estEnLigne())
                     ->onColor('success')
-                    ->offColor('danger'),
+                    ->offColor('danger')
+                    ->afterStateUpdated(function ($state, Ordinateur $record) {
+                        if ($state) {
+                            $record->allumer();
+                        } else {
+                            $record->eteindre();
+                        }
+                    }),
                 Tables\Columns\TextColumn::make('client.nom_complet')
                     ->label('Client actuel')
                     ->getStateUsing(function ($record) {
@@ -84,6 +94,9 @@ class OrdinateurResource extends Resource
                 Tables\Actions\Action::make('mettre_a_jour')
                     ->label('Mettre à jour')
                     ->button()
+                    ->action(function (Ordinateur $record) {
+                        $record->mettreAJour();
+                    })
                     ->color('gray'),
             ])
             ->headerActions([
@@ -91,14 +104,18 @@ class OrdinateurResource extends Resource
                     ->label('Tout allumer')
                     ->color('success')
                     ->action(function () {
-                        Ordinateur::where('est_allumé', false)->update(['est_allumé' => true]);
+                        Ordinateur::all()->each(function ($ordinateur) {
+                            $ordinateur->allumer();
+                        });
                     }),
 
                 Tables\Actions\Action::make('tout_eteindre')
                     ->label('Tout éteindre')
                     ->color('danger')
                     ->action(function () {
-                        Ordinateur::where('est_allumé', true)->update(['est_allumé' => false]);
+                        Ordinateur::all()->each(function ($ordinateur) {
+                            $ordinateur->eteindre();
+                        });
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Confirmation')
@@ -106,6 +123,11 @@ class OrdinateurResource extends Resource
 
                 Tables\Actions\Action::make('tout_mettre_a_jour')
                     ->label('Tout mettre à jour')
+                    ->action(function () {
+                        Ordinateur::all()->each(function ($ordinateur) {
+                            $ordinateur->mettreAJour();
+                        });
+                    })
                     ->color('gray'),
             ])
             ->paginated(false)
