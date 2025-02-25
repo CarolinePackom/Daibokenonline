@@ -248,7 +248,7 @@ class DatabaseSeeder extends Seeder
 
         Client::create([
             'prenom' => 'Visiteur',
-            'nom' => ' ',
+            'nom' => 'Daiboken',
             'email' => 'visiteur@daiboken.fr',
         ]);
 

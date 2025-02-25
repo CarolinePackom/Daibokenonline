@@ -49,46 +49,47 @@ class Ordinateur extends Model
     }
 
     public function creerUtilisateur(string $nom_utilisateur): void
-    {
-        $ssh = $this->connexionSSH();
+{
+    $ssh = $this->connexionSSH();
 
-        try {
-            // Supprime l'utilisateur s'il existe déjà
-            $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
+    try {
+        $nom_utilisateur = trim($nom_utilisateur);
 
-            $command = 'powershell -ExecutionPolicy Bypass -NoProfile -Command ';
-            $command .= '"& { net user ';
-            $command .= "'$nom_utilisateur' /add /active:yes";
-            $command .= ' }"';
+        // 🔹 Supprime l'utilisateur s'il existe déjà
+        $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
-            // 🔹 Exécuter la commande via SSH
-            $ssh->exec($command);
+        // 🔹 Crée un nouvel utilisateur Windows sans mot de passe et sans demande de changement
+        $ssh->exec("net user \"{$nom_utilisateur}\" /add /active:yes /passwordreq:no /passwordchg:no");
 
-            // Vérifier si la session de l'utilisateur est active
-            $script = <<<POWERSHELL
-        \$UserToSwitch = "{$nom_utilisateur}"
-        \$session = query user | Where-Object { \$_ -match \$UserToSwitch }
+        // 🔹 Désactiver l'expérience OOBE et autres paramètres initiaux
+        $ssh->exec("powershell -Command \"REG ADD 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\OOBE' /v SkipUserOOBE /t REG_DWORD /d 1 /f\"");
+        $ssh->exec("powershell -Command \"REG ADD 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\OOBE' /v SkipMachineOOBE /t REG_DWORD /d 1 /f\"");
+        $ssh->exec("powershell -Command \"REG ADD 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' /v EnableBalloonTips /t REG_DWORD /d 0 /f\"");
+        $ssh->exec("powershell -Command \"REG ADD 'HKCU\\Software\\Policies\\Microsoft\\Windows\\CloudContent' /v DisableWindowsConsumerFeatures /t REG_DWORD /d 1 /f\"");
+        $ssh->exec("powershell -Command \"REG ADD 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\UserProfileEngagement' /v ScoobeSystemSettingEnabled /t REG_DWORD /d 0 /f\"");
 
-        if (\$session) {
-            \$sessionID = (\$session -split '\\s+')[2]
-            try {
-                tscon \$sessionID /dest:console
-            } catch {
-                Write-Host "Failed to switch to user \$UserToSwitch. Error: \$_" -ForegroundColor Red
-            }
+        // 🔹 Vérifier si la session de l'utilisateur est active
+        $ssh->exec("powershell -Command \"query user | Where-Object { \$_ -match '{$nom_utilisateur}' } > C:\\session_result.txt\"");
+
+        // 🔹 Récupérer l'ID de session
+        $session_id_result = $ssh->exec("powershell -Command \"(Get-Content C:\\session_result.txt) -match '{$nom_utilisateur}'\"");
+
+        // 🔹 Vérifier si une session a été trouvée
+        if (trim($session_id_result) !== '') {
+            // Extraire l'ID de session
+            $session_id = trim(explode(" ", preg_replace('/\s+/', ' ', $session_id_result))[2]);
+
+            // 🔹 Se connecter à la session utilisateur
+            $ssh->exec("powershell -Command \"tscon {$session_id} /dest:console\"");
         } else {
-            Write-Host "User \$UserToSwitch does not have an active session." -ForegroundColor Yellow
-            Write-Host "Please log in as \$UserToSwitch first."
+            // Aucun utilisateur trouvé, afficher un message
+            $ssh->exec("powershell -Command \"Write-Host 'Utilisateur non trouvé ou non connecté'\"");
         }
-        POWERSHELL;
 
-            // Exécuter le script PowerShell
-            $ssh->exec("powershell -Command \"$script\"");
-
-        } finally {
-            $ssh->disconnect();
-        }
+    } finally {
+        $ssh->disconnect();
     }
+}
 
 
     public function clientActuel()
