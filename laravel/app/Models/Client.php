@@ -52,9 +52,6 @@ class Client extends Model
             'ordinateur_id' => $ordinateurId,
             'debut_utilisation' => now(),
         ]);
-
-        // Optionnel : mettre à jour l'ordinateur associé au client
-        $this->update(['ordinateur_id' => $ordinateurId]);
     }
 
     public function deconnecterOrdinateur(): void
@@ -75,7 +72,6 @@ class Client extends Model
 
             // Mettre à jour l'historique et la base de données
             $historique->update(['fin_utilisation' => now()]);
-            $this->update(['ordinateur_id' => null]);
         }
     }
 
