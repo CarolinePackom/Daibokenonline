@@ -70,7 +70,7 @@ class Client extends Model
             if ($ordinateur) {
                 // Supprimer l'utilisateur Windows
                 $nom_utilisateur = $this->prenom . " " . $this->nom;
-                $ordinateur->supprimerUtilisateurs($nom_utilisateur);
+                $ordinateur->supprimerUtilisateur($nom_utilisateur);
             }
 
             // Mettre à jour l'historique et la base de données
