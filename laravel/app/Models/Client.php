@@ -38,21 +38,37 @@ class Client extends Model
     }
 
     public function connecterOrdinateur(int $ordinateurId): void
-    {
-        $ordinateur = Ordinateur::findOrFail($ordinateurId);
+{
+    $nouvelOrdinateur = Ordinateur::findOrFail($ordinateurId);
 
-        if ($ordinateur->en_maintenance || !$ordinateur->est_allumé) {
-            throw new \Exception('Ordinateur indisponible.');
+    if ($nouvelOrdinateur->en_maintenance || !$nouvelOrdinateur->est_allumé) {
+        throw new \Exception('Ordinateur indisponible.');
+    }
+
+    // ✅ Déconnecter l'utilisateur de son ancien ordinateur s'il en a un
+    $historique = HistoriqueOrdinateur::where('client_id', $this->id)
+        ->whereNull('fin_utilisation')
+        ->first();
+
+    if ($historique) {
+        $ancienOrdinateur = Ordinateur::find($historique->ordinateur_id);
+        if ($ancienOrdinateur) {
+            $ancienOrdinateur->supprimerUtilisateur($this->prenom . " " . $this->nom);
         }
 
-        $ordinateur->creerUtilisateur($this->prenom . " " . $this->nom);
-
-        HistoriqueOrdinateur::create([
-            'client_id' => $this->id,
-            'ordinateur_id' => $ordinateurId,
-            'debut_utilisation' => now(),
-        ]);
+        // ✅ Marquer l'ancienne session comme terminée
+        $historique->update(['fin_utilisation' => now()]);
     }
+
+    // ✅ Maintenant, connecter l’utilisateur au nouvel ordinateur
+    $nouvelOrdinateur->creerUtilisateur($this->prenom . " " . $this->nom);
+
+    HistoriqueOrdinateur::create([
+        'client_id' => $this->id,
+        'ordinateur_id' => $ordinateurId,
+        'debut_utilisation' => now(),
+    ]);
+}
 
     public function deconnecterOrdinateur(): void
     {

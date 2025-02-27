@@ -103,7 +103,6 @@ class Ordinateur extends Model
 
     public function eteindre(): void
 {
-    // Vérifier si un client est connecté
     $client = $this->clientActuel()->first();
 
     if ($client) {
@@ -111,7 +110,6 @@ class Ordinateur extends Model
         sleep(5);
     }
 
-    // Connexion SSH pour éteindre l'ordinateur
     $ssh = $this->connexionSSH();
 
     try {
