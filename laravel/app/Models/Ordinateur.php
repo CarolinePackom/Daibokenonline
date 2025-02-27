@@ -137,45 +137,21 @@ class Ordinateur extends Model
 
 
 
-
 public function allumer(): void
 {
-    $broadcast = '192.168.1.255';
-    $port = 9;
-
-    $mac = str_replace([':', '-', '.'], '', $this->adresse_mac);
-    if (strlen($mac) !== 12) {
-        Log::error("Adresse MAC invalide : {$this->adresse_mac}");
+    $mac = $this->adresse_mac;
+    if (empty($mac)) {
         throw new Exception("Adresse MAC invalide.");
     }
 
-    Log::info("Envoi du paquet WOL à {$this->adresse_mac} via {$broadcast}:{$port}");
-
-    $packet = str_repeat(chr(0xFF), 6);
-    for ($i = 0; $i < 16; $i++) {
-        $packet .= pack("H*", $mac);
-    }
-
-    if (!$sock = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP)) {
-        $errorMessage = socket_strerror(socket_last_error());
-        Log::error("Erreur lors de la création de la socket : {$errorMessage}");
-        throw new Exception("Erreur lors de la création de la socket : {$errorMessage}");
-    }
-    socket_set_option($sock, SOL_SOCKET, SO_BROADCAST, true);
-
-    $sent = socket_sendto($sock, $packet, strlen($packet), 0, $broadcast, $port);
-    if ($sent === false) {
-        $errorMessage = socket_strerror(socket_last_error());
-        Log::error("Erreur lors de l'envoi du paquet WOL : {$errorMessage}");
-        throw new Exception("Erreur lors de l'envoi du paquet WOL : {$errorMessage}");
-    }
-
-    socket_close($sock);
-    Log::info("Paquet WOL envoyé avec succès à {$this->adresse_mac}");
+    // Exécuter le script WOL sur le serveur
+    $commande = escapeshellcmd("bash /usr/local/bin/wol.sh " . escapeshellarg($mac));
+    shell_exec($commande . " > /dev/null 2>&1 &");
 
     sleep(5);
     $this->estEnLigne();
 }
+
 
 
     public function mettreAJour(): void
