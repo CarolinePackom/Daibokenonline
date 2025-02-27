@@ -250,6 +250,7 @@ class DatabaseSeeder extends Seeder
             'prenom' => 'Mathis',
             'nom' => 'Malherbe',
             'email' => 'malherbe.mathis@gmail.com',
+            'id_nfc' => '0422BEEA157480',
         ]);
 
         Client::create([

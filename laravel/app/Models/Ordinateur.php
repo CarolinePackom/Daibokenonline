@@ -65,35 +65,28 @@ class Ordinateur extends Model
 {
     $ssh = $this->connexionSSH();
 
-    $this->allumer();
+    $nom_utilisateur = trim($nom_utilisateur);
+    $nom_domaine = "WORKGROUP";
 
     try {
-        $nom_utilisateur = trim($nom_utilisateur);
-        $nom_domaine = "WORKGROUP"; // Par défaut, la plupart des PC sont sous "WORKGROUP"
-
-        // 1️⃣ Créer l'utilisateur et l'activer immédiatement
         $ssh->exec("net user \"{$nom_utilisateur}\" /add /active:yes /passwordreq:no /passwordchg:no");
+        $ssh->exec("net localgroup Administrateurs \"{$nom_utilisateur}\" /add");
 
-        // 2️⃣ Configurer l'auto-login dans le registre
         $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoAdminLogon /t REG_SZ /d \"1\" /f");
         $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultUserName /t REG_SZ /d \"{$nom_utilisateur}\" /f");
-        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultDomainName /t REG_SZ /d \"{$nom_domaine}\" /f"); // 🔥 Ajout clé manquante
-        $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultPassword /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultDomainName /t REG_SZ /d \"{$nom_domaine}\" /f");
 
-        // 3️⃣ Désactiver les restrictions sur les comptes sans mot de passe
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoLogonCount /t REG_DWORD /d 0xffffffff /f");
+
         $ssh->exec("reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa\" /v LimitBlankPasswordUse /t REG_DWORD /d 0 /f");
 
-        // 4️⃣ S'assurer que Windows ne bloque pas l'auto-login après un redémarrage
-        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoLogonCount /t REG_DWORD /d 1 /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE\" /v SkipUserOOBE /t REG_DWORD /d 1 /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE\" /v SkipMachineOOBE /t REG_DWORD /d 1 /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\OOBE\" /v DisablePrivacyExperience /t REG_DWORD /d 1 /f");
 
-        // 5️⃣ Désactiver l’expérience OOBE pour éviter les écrans de configuration
-        $ssh->exec("REG ADD HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE /v SkipUserOOBE /t REG_DWORD /d 1 /f");
-        $ssh->exec("REG ADD HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE /v SkipMachineOOBE /t REG_DWORD /d 1 /f");
-        $ssh->exec("REG ADD HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\OOBE /v DisablePrivacyExperience /t REG_DWORD /d 1 /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization\" /v NoLockScreen /t REG_DWORD /d 1 /f");
 
-        // 6️⃣ Redémarrer pour appliquer les changements
         $ssh->exec("shutdown /r /t 1");
-
     } finally {
         $ssh->disconnect();
     }
@@ -130,11 +123,7 @@ class Ordinateur extends Model
 
     public function allumer(): void
     {
-        $appUrl = config('app.url');
-        $parsedUrl = parse_url($appUrl);
-        $ip = $parsedUrl['host'] ?? $appUrl;
-
-        $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', $ip);
+        $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '192.168.1.28');
 
         $mac = str_replace('-', ':', $this->adresse_mac);
         try {
@@ -147,50 +136,21 @@ class Ordinateur extends Model
 public static function verifierTousEnLigne()
 {
     $ordinateurs = self::all();
-    $sockets = [];
     $resultats = [];
 
-    // Ouvrir toutes les connexions en même temps
     foreach ($ordinateurs as $ordinateur) {
-        $socket = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
+        $fp = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
 
-        if ($socket) {
-            stream_set_blocking($socket, false);
-            $sockets[$ordinateur->id] = $socket; // Ajouter seulement si c'est valide
-        }
-    }
-
-    if (empty($sockets)) {
-        // Aucun ordinateur valide à vérifier
-        return;
-    }
-
-    // Vérifier quelles connexions sont actives
-    $read = $sockets;
-    $write = null;
-    $except = null;
-    $changed_streams = stream_select($read, $write, $except, 1);
-
-    if ($changed_streams === false) {
-        // Erreur dans stream_select, on arrête ici
-        return;
-    }
-
-    // Stocker les résultats
-    foreach ($sockets as $id => $socket) {
-        if (in_array($socket, $read)) {
-            $resultats[$id] = true;
+        if ($fp) {
+            fclose($fp);
+            $resultats[$ordinateur->id] = true;
         } else {
-            $resultats[$id] = false;
+            $resultats[$ordinateur->id] = false;
         }
-        fclose($socket); // Toujours fermer les sockets ouverts
     }
 
-    // Mettre à jour la base de données et le cache en une seule opération
-    foreach ($ordinateurs as $ordinateur) {
-        $ordinateur->update(['est_allumé' => $resultats[$ordinateur->id] ?? false]);
-        Cache::put("ordinateur_{$ordinateur->id}_online", $resultats[$ordinateur->id] ?? false, now()->addSeconds(30));
-    }
+    self::whereIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => true]);
+    self::whereNotIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => false]);
 }
 
     public function mettreAJour(): void
@@ -203,22 +163,7 @@ public static function verifierTousEnLigne()
         } finally {
             $ssh->disconnect();
             $this->update(['last_update' => now()]);
-            sleep(5);
-            $this->estEnLigne();
         }
-    }
-
-    public function estEnLigne(): bool
-    {
-        $timeout = 1;
-        $fp = @fsockopen($this->adresse_ip, 22, $errno, $errstr, $timeout);
-        if ($fp) {
-            fclose($fp);
-            $this->update(['est_allumé' => true]);
-            return true;
-        }
-        $this->update(['est_allumé' => false]);
-        return false;
     }
 
 }

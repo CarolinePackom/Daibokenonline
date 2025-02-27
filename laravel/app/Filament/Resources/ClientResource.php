@@ -109,42 +109,38 @@ class ClientResource extends Resource
                     }),
 
                 Tables\Columns\SelectColumn::make('ordinateur_id')
-    ->label('Ordinateur')
-    ->options(function (Client $record) {
-        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
-            ->where('client_id', '!=', $record->id)
-            ->pluck('ordinateur_id')
-            ->toArray();
+                    ->label('Ordinateur')
+                    ->options(function (Client $record) {
+                        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
+                            ->where('client_id', '!=', $record->id)
+                            ->pluck('ordinateur_id')
+                            ->toArray();
 
-        return [
-            null => 'Aucun ordinateur',
-        ] + Ordinateur::where('en_maintenance', false)
-            ->whereNotIn('id', $ordinateursUtilises)
-            ->get()
-            ->filter(function ($ordinateur) {
-                return Cache::get("ordinateur_{$ordinateur->id}_online", false); // Vérifie le cache
-            })
-            ->pluck('nom', 'id')
-            ->toArray();
-    })
-    ->updateStateUsing(function (Client $record, $state) {
-        if ($state) {
-            $record->connecterOrdinateur($state);
-        } else {
-            $record->deconnecterOrdinateur();
-        }
-    })
-    ->default(null)
-    ->selectablePlaceholder(false)
-    ->disabled(fn (?Client $record) => !$record->est_present)
-    ->getStateUsing(function (Client $record) {
-        $historique = $record->historiqueOrdinateurs()
-            ->whereNull('fin_utilisation')
-            ->first();
+                        return [
+                            null => 'Aucun ordinateur',
+                        ] + Ordinateur::where('en_maintenance', false)
+                            ->whereNotIn('id', $ordinateursUtilises)
+                            ->where('est_allumé', true)
+                            ->pluck('nom', 'id')
+                            ->toArray();
+                    })
+                    ->updateStateUsing(function (Client $record, $state) {
+                        if ($state) {
+                            $record->connecterOrdinateur($state);
+                        } else {
+                            $record->deconnecterOrdinateur();
+                        }
+                    })
+                    ->default(null)
+                    ->selectablePlaceholder(false)
+                    ->disabled(fn (?Client $record) => !$record->est_present)
+                    ->getStateUsing(function (Client $record) {
+                        $historique = $record->historiqueOrdinateurs()
+                            ->whereNull('fin_utilisation')
+                            ->first();
 
-        return $historique ? $historique->ordinateur_id : null;
-    }),
-
+                        return $historique ? $historique->ordinateur_id : null;
+                    }),
 
                 Tables\Columns\TextColumn::make('solde_credit')
                     ->label('Solde crédit')

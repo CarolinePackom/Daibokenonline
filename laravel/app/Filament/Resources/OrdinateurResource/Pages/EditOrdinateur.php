@@ -20,30 +20,31 @@ class EditOrdinateur extends EditRecord
                 ->color('success')
                 ->action(function (Ordinateur $record) {
                     $record->allumer();
-                    sleep(10);
+                    sleep(30);
                     $record->refresh();
                 })
-                ->visible(fn (Ordinateur $record) => !$record->estEnLigne()),
+                ->visible(fn (Ordinateur $record) => !$record->fresh()->est_allumé),
 
             Actions\Action::make('eteindre')
                 ->label('Éteindre')
                 ->color('danger')
                 ->action(function (Ordinateur $record) {
                     $record->eteindre();
-                    sleep(5);
+                    sleep(30);
                     $record->refresh();
                 })
                 ->requiresConfirmation()
                 ->modalHeading('Confirmation')
                 ->modalDescription('Êtes-vous sûr de vouloir éteindre cet ordinateur ?')
-                ->visible(fn (Ordinateur $record) => $record->estEnLigne()),
+                ->visible(fn (Ordinateur $record) => $record->fresh()->est_allumé),
 
             Actions\Action::make('mettre_a_jour')
                 ->label('Mettre à jour')
                 ->color('gray')
                 ->action(function (Ordinateur $record) {
                     $record->mettreAJour();
-                }),
+                })
+                ->visible(fn (Ordinateur $record) => $record->fresh()->est_allumé),
         ];
     }
 }

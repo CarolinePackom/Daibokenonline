@@ -10,4 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::call(function () {
     Ordinateur::verifierTousEnLigne();
-})->everyThirtySeconds();
+})->everyTenSeconds();
