@@ -94,8 +94,6 @@ class Ordinateur extends Model
         // 6️⃣ Redémarrer pour appliquer les changements
         $ssh->exec("shutdown /r /t 1");
 
-        sleep(2);
-
     } finally {
         $ssh->disconnect();
     }
@@ -127,8 +125,6 @@ class Ordinateur extends Model
         $ssh->exec("shutdown /s /f /t 0");
     } finally {
         $ssh->disconnect();
-        sleep(5);
-        $this->estEnLigne();
     }
 }
 
@@ -145,8 +141,6 @@ class Ordinateur extends Model
             $ssh->exec("wakeonlan {$mac}");
         } finally {
             $ssh->disconnect();
-            sleep(5);
-            $this->estEnLigne();
         }
     }
 
