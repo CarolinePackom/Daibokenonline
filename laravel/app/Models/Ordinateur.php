@@ -137,7 +137,7 @@ class Ordinateur extends Model
 
 public function allumer(): void
 {
-    $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '86.249.42.88');
+    $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '192.168.1.28');
 
         try {
             $ssh->exec("wakeonlan {$this->adresse_mac}");
