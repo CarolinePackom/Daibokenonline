@@ -137,7 +137,7 @@ class Ordinateur extends Model
 
     public function allumer(): void
     {
-        $broadcast = '192.168.1.255';
+        $broadcast = '255.255.255.255';
         $port = 9;
 
         $mac = str_replace([':', '-', '.'], '', $this->adresse_mac);
