@@ -134,7 +134,7 @@ class Ordinateur extends Model
 
     public function allumer(): void
     {
-        $appUrl = config('APP_URL');
+        $appUrl = config('app.url');
         $parsedUrl = parse_url($appUrl);
         $ip = $parsedUrl['host'] ?? $appUrl;
 
