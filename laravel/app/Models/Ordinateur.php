@@ -26,14 +26,12 @@ class Ordinateur extends Model
         return $this->hasMany(HistoriqueOrdinateur::class);
     }
 
-    protected function connexionSSH(): SSH2
+    protected function connexionSSH($identifiant='Admin', $mot_de_passe='123Soleil-Daiboken', $ip=null): SSH2
     {
-        $identifiant = "Admin";
-        $mot_de_passe = "123Soleil-Daiboken";
-
-        $ssh = new SSH2($this->adresse_ip);
+        $ip = $ip ?? $this->adresse_ip;
+        $ssh = new SSH2($ip);
         if (!$ssh->login($identifiant, $mot_de_passe)) {
-            throw new Exception("Échec de la connexion SSH vers {$this->adresse_ip}");
+            throw new Exception("Échec de la connexion SSH vers {$ip}");
         }
         return $ssh;
     }
@@ -139,13 +137,15 @@ class Ordinateur extends Model
 
 public function allumer(): void
 {
-    $identifiant = "daiboken";
-    $mot_de_passe = "123Soleil-Daiboken";
-    $ssh = new SSH2("86.249.42.88");
-    if (!$ssh->login($identifiant, $mot_de_passe)) {
-        throw new Exception("Échec de la connexion SSH vers 86.249.42.88");
-    }
-    $ssh->exec("wakeonlan {$this->adresse_mac}");
+    $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '86.249.42.88');
+
+        try {
+            $ssh->exec("wakeonlan {$this->adresse_mac}");
+        } finally {
+            $ssh->disconnect();
+            sleep(5);
+            $this->estEnLigne();
+        }
 }
 
 
