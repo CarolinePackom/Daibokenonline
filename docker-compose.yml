@@ -42,6 +42,13 @@ services:
             - mariadb_data:/var/lib/mysql
         networks:
             - sail
+    
+    wake-on-lan-service:
+        image: projects.torsion.org/witten/wake-on-lan-service
+        restart: always
+        network_mode: host
+        environment:
+            PORT: 18888 
 
 networks:
     sail:

@@ -133,19 +133,22 @@ class Ordinateur extends Model
     }
 }
 
-public function allumer(): void
+
+
+    public function allumer(): void
 {
     $mac = $this->adresse_mac;
     if (empty($mac)) {
         throw new Exception("Adresse MAC invalide.");
     }
 
-    // Définir le chemin absolu du script
-    $scriptPath = base_path('scripts/wakeonlan.sh');
+    // Adresse et port du service WOL
+    $wolServiceHost = 'host.docker.internal';
+    $wolServicePort = 18888;
 
-    // Exécuter le script depuis Laravel
-    $commande = escapeshellcmd("bash " . $scriptPath . " " . escapeshellarg($mac));
-    shell_exec($commande . " > /dev/null 2>&1 &");
+    // Commande pour envoyer l'adresse MAC au service WOL
+    $commande = sprintf('echo %s | nc %s %d', escapeshellarg($mac), $wolServiceHost, $wolServicePort);
+    shell_exec($commande . ' > /dev/null 2>&1 &');
 
     sleep(5);
     $this->estEnLigne();
