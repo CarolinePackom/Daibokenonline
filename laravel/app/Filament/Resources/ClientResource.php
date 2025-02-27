@@ -130,6 +130,7 @@ class ClientResource extends Resource
                         } else {
                             $record->deconnecterOrdinateur();
                         }
+                        sleep(30);
                     })
                     ->default(null)
                     ->selectablePlaceholder(false)

@@ -62,19 +62,17 @@ class OrdinateurResource extends Resource
                 Tables\Columns\TextColumn::make('nom'),
                 Tables\Columns\ToggleColumn::make('est_allumé')
                     ->label('Allumé')
-                    ->getStateUsing(fn (Ordinateur $record) => $record->est_allumé) // Plus besoin de cache
+                    ->getStateUsing(fn (Ordinateur $record) => $record->est_allumé)
                     ->onColor('success')
                     ->offColor('danger')
                     ->afterStateUpdated(function ($state, Ordinateur $record) {
                         if ($state) {
                             $record->allumer();
-                            sleep(30);
-                            $record->refresh();
                         } else {
                             $record->eteindre();
-                            sleep(30);
-                            $record->refresh();
                         }
+                        sleep(30);
+                        $record->refresh();
                     }),
                 Tables\Columns\TextColumn::make('client.nom_complet')
                     ->label('Client actuel')
