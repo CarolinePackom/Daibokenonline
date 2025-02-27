@@ -68,8 +68,12 @@ class OrdinateurResource extends Resource
                     ->afterStateUpdated(function ($state, Ordinateur $record) {
                         if ($state) {
                             $record->allumer();
+                            sleep(30);
+                            $record->refresh();
                         } else {
                             $record->eteindre();
+                            sleep(30);
+                            $record->refresh();
                         }
                     }),
                 Tables\Columns\TextColumn::make('client.nom_complet')
