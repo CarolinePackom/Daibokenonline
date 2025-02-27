@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class OrdinateurResource extends Resource
@@ -61,7 +62,7 @@ class OrdinateurResource extends Resource
                 Tables\Columns\TextColumn::make('nom'),
                 Tables\Columns\ToggleColumn::make('est_allumé')
                     ->label('Allumé')
-                    ->getStateUsing(fn (Ordinateur $record) => $record->estEnLigne())
+                    ->getStateUsing(fn (Ordinateur $record) => Cache::get("ordinateur_{$record->id}_online", false))
                     ->onColor('success')
                     ->offColor('danger')
                     ->afterStateUpdated(function ($state, Ordinateur $record) {
