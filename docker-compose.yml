@@ -23,6 +23,7 @@ services:
             - './laravel:/var/www/html'
         networks:
             - sail
+            - wol_network
         depends_on:
             - mariadb
 
@@ -45,6 +46,10 @@ services:
 networks:
     sail:
         driver: bridge
+    wol_network:
+        driver: macvlan
+        driver_opts:
+            parent: enp1s0
 
 volumes:
     mariadb_data:
