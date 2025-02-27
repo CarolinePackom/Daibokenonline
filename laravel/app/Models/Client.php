@@ -51,16 +51,9 @@ class Client extends Model
         ->first();
 
     if ($historique) {
-        $ancienOrdinateur = Ordinateur::find($historique->ordinateur_id);
-        if ($ancienOrdinateur) {
-            $ancienOrdinateur->supprimerUtilisateur($this->prenom . " " . $this->nom);
-        }
-
-        // ✅ Marquer l'ancienne session comme terminée
-        $historique->update(['fin_utilisation' => now()]);
+        $this->deconnecterOrdinateur();
     }
 
-    // ✅ Maintenant, connecter l’utilisateur au nouvel ordinateur
     $nouvelOrdinateur->creerUtilisateur($this->prenom . " " . $this->nom);
 
     HistoriqueOrdinateur::create([
@@ -68,7 +61,10 @@ class Client extends Model
         'ordinateur_id' => $ordinateurId,
         'debut_utilisation' => now(),
     ]);
+
+    $this->refresh();
 }
+
 
     public function deconnecterOrdinateur(): void
     {
