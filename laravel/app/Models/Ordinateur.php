@@ -5,6 +5,7 @@ namespace App\Models;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use phpseclib3\Net\SSH2;
 
 class Ordinateur extends Model
@@ -135,20 +136,42 @@ class Ordinateur extends Model
 
 
 
-    public function allumer(): void
+    use Illuminate\Support\Facades\Log;
+
+public function allumer(): void
 {
-    $mac = $this->adresse_mac;
-    if (empty($mac)) {
+    $broadcast = '192.168.1.255';
+    $port = 9;
+
+    $mac = str_replace([':', '-', '.'], '', $this->adresse_mac);
+    if (strlen($mac) !== 12) {
+        Log::error("Adresse MAC invalide : {$this->adresse_mac}");
         throw new Exception("Adresse MAC invalide.");
     }
 
-    // Adresse et port du service WOL
-    $wolServiceHost = 'host.docker.internal';
-    $wolServicePort = 18888;
+    Log::info("Envoi du paquet WOL à {$this->adresse_mac} via {$broadcast}:{$port}");
 
-    // Commande pour envoyer l'adresse MAC au service WOL
-    $commande = sprintf('echo %s | nc %s %d', escapeshellarg($mac), $wolServiceHost, $wolServicePort);
-    shell_exec($commande . ' > /dev/null 2>&1 &');
+    $packet = str_repeat(chr(0xFF), 6);
+    for ($i = 0; $i < 16; $i++) {
+        $packet .= pack("H*", $mac);
+    }
+
+    if (!$sock = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP)) {
+        $errorMessage = socket_strerror(socket_last_error());
+        Log::error("Erreur lors de la création de la socket : {$errorMessage}");
+        throw new Exception("Erreur lors de la création de la socket : {$errorMessage}");
+    }
+    socket_set_option($sock, SOL_SOCKET, SO_BROADCAST, true);
+
+    $sent = socket_sendto($sock, $packet, strlen($packet), 0, $broadcast, $port);
+    if ($sent === false) {
+        $errorMessage = socket_strerror(socket_last_error());
+        Log::error("Erreur lors de l'envoi du paquet WOL : {$errorMessage}");
+        throw new Exception("Erreur lors de l'envoi du paquet WOL : {$errorMessage}");
+    }
+
+    socket_close($sock);
+    Log::info("Paquet WOL envoyé avec succès à {$this->adresse_mac}");
 
     sleep(5);
     $this->estEnLigne();
