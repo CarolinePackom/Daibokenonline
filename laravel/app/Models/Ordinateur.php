@@ -134,7 +134,9 @@ class Ordinateur extends Model
 
     public function allumer(): void
     {
-        $ip = trim(shell_exec("hostname -I | awk '{print $1}'"));
+        $appUrl = config('APP_URL');
+        $parsedUrl = parse_url($appUrl);
+        $ip = $parsedUrl['host'] ?? $appUrl;
 
         $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', $ip);
 
