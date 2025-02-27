@@ -134,9 +134,9 @@ class Ordinateur extends Model
 
     public function allumer(): void
     {
-        $localIp = $this->getLocalIpAddress();
+        $ip = trim(shell_exec("hostname -I | awk '{print $1}'"));
 
-        $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', $localIp);
+        $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', $ip);
 
         $mac = str_replace('-', ':', $this->adresse_mac);
         try {
