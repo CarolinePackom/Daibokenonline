@@ -133,37 +133,24 @@ class Ordinateur extends Model
     }
 }
 
-
-
-    public function allumer(): void
-    {
-        $broadcast = '255.255.255.255';
-        $port = 9;
-
-        $mac = str_replace([':', '-', '.'], '', $this->adresse_mac);
-        if (strlen($mac) !== 12) {
-            throw new Exception("Adresse MAC invalide.");
-        }
-
-        $packet = str_repeat(chr(0xFF), 6);
-        for ($i = 0; $i < 16; $i++) {
-            $packet .= pack("H*", $mac);
-        }
-
-        if (!$sock = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP)) {
-            throw new Exception("Erreur lors de la création de la socket.");
-        }
-        socket_set_option($sock, SOL_SOCKET, SO_BROADCAST, true);
-
-        $sent = socket_sendto($sock, $packet, strlen($packet), 0, $broadcast, $port);
-        if ($sent === false) {
-            throw new Exception("Erreur lors de l'envoi du paquet WOL.");
-        }
-
-        socket_close($sock);
-        sleep(5);
-        $this->estEnLigne();
+public function allumer(): void
+{
+    $mac = $this->adresse_mac;
+    if (empty($mac)) {
+        throw new Exception("Adresse MAC invalide.");
     }
+
+    // Définir le chemin absolu du script
+    $scriptPath = base_path('scripts/wakeonlan.sh');
+
+    // Exécuter le script depuis Laravel
+    $commande = escapeshellcmd("bash " . $scriptPath . " " . escapeshellarg($mac));
+    shell_exec($commande . " > /dev/null 2>&1 &");
+
+    sleep(5);
+    $this->estEnLigne();
+}
+
 
     public function mettreAJour(): void
     {
