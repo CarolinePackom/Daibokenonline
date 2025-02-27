@@ -37,54 +37,65 @@ class Ordinateur extends Model
         return $ssh;
     }
 
-    public function supprimerUtilisateur(string $nom_utilisateur):void
-    {
-        $ssh = $this->connexionSSH();
-
-        try {
-            $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
-        } finally {
-            $ssh->disconnect();
-        }
-    }
-
-    public function creerUtilisateur(string $nom_utilisateur): void
+    public function supprimerUtilisateur(string $nom_utilisateur): void
 {
     $ssh = $this->connexionSSH();
 
     try {
         $nom_utilisateur = trim($nom_utilisateur);
 
-        // 🔹 Supprime l'utilisateur s'il existe déjà
         $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
-        // 🔹 Crée un nouvel utilisateur Windows sans mot de passe et sans demande de changement
+        $ssh->exec("for /f \"skip=1 tokens=3\" %i in ('query session') do logoff %i");
+        $ssh->exec("logoff 1");
+
+        $ssh->exec("if exist \"C:\\Users\\{$nom_utilisateur}\" rd /s /q \"C:\\Users\\{$nom_utilisateur}\"");
+
+        $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoAdminLogon /f");
+        $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultUserName /f");
+        $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultPassword /f");
+
+        $ssh->exec("wmic path Win32_UserProfile where Name='C:\\\\Users\\\\{$nom_utilisateur}' delete");
+
+    } finally {
+        $ssh->disconnect();
+    }
+}
+
+    public function creerUtilisateur(string $nom_utilisateur): void
+{
+    $ssh = $this->connexionSSH();
+
+    $this->allumer();
+
+    try {
+        $nom_utilisateur = trim($nom_utilisateur);
+        $nom_domaine = "WORKGROUP"; // Par défaut, la plupart des PC sont sous "WORKGROUP"
+
+        // 1️⃣ Créer l'utilisateur et l'activer immédiatement
         $ssh->exec("net user \"{$nom_utilisateur}\" /add /active:yes /passwordreq:no /passwordchg:no");
 
-        // 🔹 Désactiver l'expérience OOBE et autres paramètres initiaux
-        $ssh->exec("powershell -Command \"REG ADD 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\OOBE' /v SkipUserOOBE /t REG_DWORD /d 1 /f\"");
-        $ssh->exec("powershell -Command \"REG ADD 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\OOBE' /v SkipMachineOOBE /t REG_DWORD /d 1 /f\"");
-        $ssh->exec("powershell -Command \"REG ADD 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' /v EnableBalloonTips /t REG_DWORD /d 0 /f\"");
-        $ssh->exec("powershell -Command \"REG ADD 'HKCU\\Software\\Policies\\Microsoft\\Windows\\CloudContent' /v DisableWindowsConsumerFeatures /t REG_DWORD /d 1 /f\"");
-        $ssh->exec("powershell -Command \"REG ADD 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\UserProfileEngagement' /v ScoobeSystemSettingEnabled /t REG_DWORD /d 0 /f\"");
+        // 2️⃣ Configurer l'auto-login dans le registre
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoAdminLogon /t REG_SZ /d \"1\" /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultUserName /t REG_SZ /d \"{$nom_utilisateur}\" /f");
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultDomainName /t REG_SZ /d \"{$nom_domaine}\" /f"); // 🔥 Ajout clé manquante
+        $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultPassword /f");
 
-        // 🔹 Vérifier si la session de l'utilisateur est active
-        $ssh->exec("powershell -Command \"query user | Where-Object { \$_ -match '{$nom_utilisateur}' } > C:\\session_result.txt\"");
+        // 3️⃣ Désactiver les restrictions sur les comptes sans mot de passe
+        $ssh->exec("reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa\" /v LimitBlankPasswordUse /t REG_DWORD /d 0 /f");
 
-        // 🔹 Récupérer l'ID de session
-        $session_id_result = $ssh->exec("powershell -Command \"(Get-Content C:\\session_result.txt) -match '{$nom_utilisateur}'\"");
+        // 4️⃣ S'assurer que Windows ne bloque pas l'auto-login après un redémarrage
+        $ssh->exec("reg add \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoLogonCount /t REG_DWORD /d 1 /f");
 
-        // 🔹 Vérifier si une session a été trouvée
-        if (trim($session_id_result) !== '') {
-            // Extraire l'ID de session
-            $session_id = trim(explode(" ", preg_replace('/\s+/', ' ', $session_id_result))[2]);
+        // 5️⃣ Désactiver l’expérience OOBE pour éviter les écrans de configuration
+        $ssh->exec("REG ADD HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE /v SkipUserOOBE /t REG_DWORD /d 1 /f");
+        $ssh->exec("REG ADD HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE /v SkipMachineOOBE /t REG_DWORD /d 1 /f");
+        $ssh->exec("REG ADD HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\OOBE /v DisablePrivacyExperience /t REG_DWORD /d 1 /f");
 
-            // 🔹 Se connecter à la session utilisateur
-            $ssh->exec("powershell -Command \"tscon {$session_id} /dest:console\"");
-        } else {
-            // Aucun utilisateur trouvé, afficher un message
-            $ssh->exec("powershell -Command \"Write-Host 'Utilisateur non trouvé ou non connecté'\"");
-        }
+        // 6️⃣ Redémarrer pour appliquer les changements
+        $ssh->exec("shutdown /r /t 1");
+
+        sleep(2);
 
     } finally {
         $ssh->disconnect();
@@ -101,17 +112,28 @@ class Ordinateur extends Model
     }
 
     public function eteindre(): void
-    {
-        $ssh = $this->connexionSSH();
+{
+    // Vérifier si un client est connecté
+    $client = $this->clientActuel()->first();
 
-        try {
-            $ssh->exec("shutdown /s /f /t 0");
-        } finally {
-            $ssh->disconnect();
-            sleep(5);
-            $this->estEnLigne();
-        }
+    if ($client) {
+        $client->deconnecterOrdinateur();
+        sleep(5);
     }
+
+    // Connexion SSH pour éteindre l'ordinateur
+    $ssh = $this->connexionSSH();
+
+    try {
+        $ssh->exec("shutdown /s /f /t 0");
+    } finally {
+        $ssh->disconnect();
+        sleep(5);
+        $this->estEnLigne();
+    }
+}
+
+
 
     public function allumer(): void
     {

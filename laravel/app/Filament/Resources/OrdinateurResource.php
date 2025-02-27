@@ -114,7 +114,9 @@ class OrdinateurResource extends Resource
                     ->color('danger')
                     ->action(function () {
                         Ordinateur::all()->each(function ($ordinateur) {
-                            $ordinateur->eteindre();
+                            if ($ordinateur->estEnLigne()) { // Vérifier si l'ordinateur est allumé
+                                $ordinateur->eteindre();
+                            }
                         });
                     })
                     ->requiresConfirmation()

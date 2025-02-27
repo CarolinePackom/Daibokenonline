@@ -66,7 +66,6 @@ class ClientResource extends Resource
                                 Forms\Components\TextInput::make('id_nfc')
                                     ->label('ID NFC')
                                     ->unique(ignoreRecord: true)
-                                    ->required()
                                     ->disabled()
                                     ->default(request('id_nfc') ?? null)
                                     ->dehydrated(fn ($state) => !is_null($state))
@@ -118,9 +117,12 @@ class ClientResource extends Resource
 
                         return [
                             null => 'Aucun ordinateur',
-                        ] + Ordinateur::where('est_allumé', true)
-                            ->where('en_maintenance', false)
+                        ] + Ordinateur::where('en_maintenance', false)
                             ->whereNotIn('id', $ordinateursUtilises)
+                            ->get()
+                            ->filter(function ($ordinateur) {
+                                return $ordinateur->estEnLigne();
+                            })
                             ->pluck('nom', 'id')
                             ->toArray();
                     })

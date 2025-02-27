@@ -108,71 +108,71 @@ class DatabaseSeeder extends Seeder
 
         Ordinateur::create([
             'nom' => 'DBK-0',
-            'adresse_ip' => '192.168.1.39',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:FA',
+            'adresse_ip' => '192.168.1.36',
+            'adresse_mac' => '10-FF-E0-4B-09-89',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-1',
-            'adresse_ip' => '192.168.1.1',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:FF',
+            'adresse_ip' => '192.168.1.17',
+            'adresse_mac' => '74-56-3C-DB-93-32',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-2',
-            'adresse_ip' => '192.168.1.2',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F2',
+            'adresse_ip' => '192.168.1.18',
+            'adresse_mac' => '74-56-3C-DB-93-45',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-3',
-            'adresse_ip' => '192.168.1.3',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F3',
+            'adresse_ip' => '192.168.1.19',
+            'adresse_mac' => '74-56-3C-DB-93-34',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-4',
-            'adresse_ip' => '192.168.1.4',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F4',
+            'adresse_ip' => '192.168.1.20',
+            'adresse_mac' => '74-56-3C-DB-93-35',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-5',
-            'adresse_ip' => '192.168.1.5',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F5',
+            'adresse_ip' => '192.168.1.21',
+            'adresse_mac' => '74-56-3C-DB-8F-1F',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-6',
-            'adresse_ip' => '192.168.1.6',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F6',
+            'adresse_ip' => '192.168.1.22',
+            'adresse_mac' => '74-56-3C-DB-8F-23',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-7',
-            'adresse_ip' => '192.168.1.7',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F7',
+            'adresse_ip' => '192.168.1.23',
+            'adresse_mac' => '74-56-3C-DB-8C-CE',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-8',
-            'adresse_ip' => '192.168.1.29',
+            'adresse_ip' => '192.168.1.24',
             'adresse_mac' => '74-56-3C-DB-8F-17',
             'last_update' => now(),
         ]);
 
         Ordinateur::create([
             'nom' => 'DBK-9',
-            'adresse_ip' => '192.168.1.9',
-            'adresse_mac' => 'AA:BB:CC:DD:EE:F9',
+            'adresse_ip' => '192.168.1.25',
+            'adresse_mac' => '74-56-3C-DB-93-0C',
             'last_update' => now(),
         ]);
 
@@ -247,9 +247,15 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Client::create([
-            'prenom' => 'Visiteur',
-            'nom' => 'Daiboken',
-            'email' => 'visiteur@daiboken.fr',
+            'prenom' => 'Mathis',
+            'nom' => 'Malherbe',
+            'email' => 'malherbe.mathis@gmail.com',
+        ]);
+
+        Client::create([
+            'prenom' => 'Marvin',
+            'nom' => 'Wirth',
+            'email' => 'marvin.wth@gmail.Com',
         ]);
 
         Taille::create([
