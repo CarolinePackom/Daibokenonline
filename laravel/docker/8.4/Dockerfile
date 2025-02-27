@@ -73,12 +73,6 @@ RUN echo "[program:reverb]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "user=sail" >> /etc/supervisor/conf.d/supervisord.conf
 
-RUN echo "[program:scheduler]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "command=/usr/bin/php /var/www/html/artisan schedule:work" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "user=sail" >> /etc/supervisor/conf.d/supervisord.conf
-
 EXPOSE 80/tcp
 EXPOSE 8080/tcp
 
