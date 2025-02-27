@@ -5,6 +5,7 @@ namespace App\Models;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use phpseclib3\Net\SSH2;
 
@@ -149,6 +150,50 @@ class Ordinateur extends Model
             $this->estEnLigne();
         }
     }
+
+    use Illuminate\Support\Facades\Cache;
+
+public static function verifierTousEnLigne()
+{
+    $ordinateurs = self::all();
+    $sockets = [];
+    $resultats = [];
+
+    foreach ($ordinateurs as $ordinateur) {
+        $sockets[$ordinateur->id] = @fsockopen(
+            $ordinateur->adresse_ip,
+            22, // Port SSH
+            $errno,
+            $errstr,
+            1
+        );
+
+        if ($sockets[$ordinateur->id]) {
+            stream_set_blocking($sockets[$ordinateur->id], false);
+        }
+    }
+
+    $read = $sockets;
+    $write = null;
+    $except = null;
+    stream_select($read, $write, $except, 2);
+
+    foreach ($sockets as $id => $socket) {
+        if ($socket) {
+            $resultats[$id] = true;
+            fclose($socket);
+        } else {
+            $resultats[$id] = false;
+        }
+    }
+
+    // Mettre à jour la base de données et le cache en une seule opération
+    foreach ($ordinateurs as $ordinateur) {
+        $ordinateur->update(['est_allumé' => $resultats[$ordinateur->id]]);
+        Cache::put("ordinateur_{$ordinateur->id}_online", $resultats[$ordinateur->id], now()->addSeconds(30));
+    }
+}
+
 
     public function mettreAJour(): void
     {
