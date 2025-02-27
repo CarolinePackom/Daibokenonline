@@ -140,7 +140,8 @@ public function allumer(): void
     $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '192.168.1.28');
 
         try {
-            $ssh->exec("wakeonlan {$this->adresse_mac}");
+            $result = $ssh->exec("wakeonlan {$this->adresse_mac}");
+            Log::info("Résultat de Wake-on-LAN : " . $result);
         } finally {
             $ssh->disconnect();
             sleep(5);
