@@ -73,6 +73,15 @@ RUN echo "[program:reverb]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "user=sail" >> /etc/supervisor/conf.d/supervisord.conf
 
+# Installer cron
+RUN apt-get update && apt-get install -y cron
+
+# Ajouter la tâche cron pour exécuter Laravel Schedule
+RUN echo "* * * * * sail php /var/www/html/artisan schedule:run >> /var/log/cron.log 2>&1" > /etc/cron.d/laravel_scheduler
+
+# Donner les bons droits et enregistrer la tâche cron
+RUN chmod 0644 /etc/cron.d/laravel_scheduler && crontab /etc/cron.d/laravel_scheduler
+
 EXPOSE 80/tcp
 EXPOSE 8080/tcp
 
