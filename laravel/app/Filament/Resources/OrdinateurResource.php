@@ -102,7 +102,8 @@ class OrdinateurResource extends Resource
                     ->action(function (Ordinateur $record) {
                         $record->mettreAJour();
                     })
-                    ->color('gray'),
+                    ->color('gray')
+                    ->visible(fn (Ordinateur $record) => $record->est_allumé),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('tout_allumer')
@@ -112,21 +113,25 @@ class OrdinateurResource extends Resource
                         Ordinateur::all()->each(function ($ordinateur) {
                             $ordinateur->allumer();
                         });
-                    }),
+                        sleep(30);
+                    })
+                    ->visible(fn () => Ordinateur::where('est_allumé', false)->count() > 0),
 
                 Tables\Actions\Action::make('tout_eteindre')
                     ->label('Tout éteindre')
                     ->color('danger')
                     ->action(function () {
                         Ordinateur::all()->each(function ($ordinateur) {
-                            if ($ordinateur->est_allumé) { // Vérifier si l'ordinateur est allumé
+                            if ($ordinateur->est_allumé) {
                                 $ordinateur->eteindre();
                             }
                         });
+                        sleep(30);
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Confirmation')
-                    ->modalDescription('Êtes-vous sûr de vouloir éteindre tous les ordinateurs ?'),
+                    ->modalDescription('Êtes-vous sûr de vouloir éteindre tous les ordinateurs ?')
+                    ->visible(fn () => Ordinateur::where('est_allumé', true)->count() > 0),
 
                 Tables\Actions\Action::make('tout_mettre_a_jour')
                     ->label('Tout mettre à jour')
@@ -135,7 +140,8 @@ class OrdinateurResource extends Resource
                             $ordinateur->mettreAJour();
                         });
                     })
-                    ->color('gray'),
+                    ->color('gray')
+                    ->visible(fn () => Ordinateur::where('est_allumé', true)->count() > 0),
             ])
             ->paginated(false)
             ->poll('2s');
