@@ -132,24 +132,21 @@ class Ordinateur extends Model
     }
 }
 
+    public function allumer(): void
+    {
+        $localIp = $this->getLocalIpAddress();
 
+        $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', $localIp);
 
-
-public function allumer(): void
-{
-    $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '192.168.1.28');
-
+        $mac = str_replace('-', ':', $this->adresse_mac);
         try {
-            $result = $ssh->exec("wakeonlan {$this->adresse_mac}");
-            Log::info("Résultat de Wake-on-LAN : " . $result);
+            $ssh->exec("wakeonlan {$mac}");
         } finally {
             $ssh->disconnect();
             sleep(5);
             $this->estEnLigne();
         }
-}
-
-
+    }
 
     public function mettreAJour(): void
     {
