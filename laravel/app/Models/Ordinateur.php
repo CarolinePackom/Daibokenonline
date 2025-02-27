@@ -158,39 +158,44 @@ public static function verifierTousEnLigne()
 
     // Ouvrir toutes les connexions en même temps
     foreach ($ordinateurs as $ordinateur) {
-        $sockets[$ordinateur->id] = @fsockopen(
-            $ordinateur->adresse_ip,
-            22, // Port SSH
-            $errno,
-            $errstr,
-            1 // Timeout court
-        );
+        $socket = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
 
-        if ($sockets[$ordinateur->id]) {
-            stream_set_blocking($sockets[$ordinateur->id], false);
+        if ($socket) {
+            stream_set_blocking($socket, false);
+            $sockets[$ordinateur->id] = $socket; // Ajouter seulement si c'est valide
         }
+    }
+
+    if (empty($sockets)) {
+        // Aucun ordinateur valide à vérifier
+        return;
     }
 
     // Vérifier quelles connexions sont actives
     $read = $sockets;
     $write = null;
     $except = null;
-    stream_select($read, $write, $except, 1);
+    $changed_streams = stream_select($read, $write, $except, 1);
+
+    if ($changed_streams === false) {
+        // Erreur dans stream_select, on arrête ici
+        return;
+    }
 
     // Stocker les résultats
     foreach ($sockets as $id => $socket) {
-        if ($socket && in_array($socket, $read)) {
+        if (in_array($socket, $read)) {
             $resultats[$id] = true;
-            fclose($socket);
         } else {
             $resultats[$id] = false;
         }
+        fclose($socket); // Toujours fermer les sockets ouverts
     }
 
     // Mettre à jour la base de données et le cache en une seule opération
     foreach ($ordinateurs as $ordinateur) {
-        $ordinateur->update(['est_allumé' => $resultats[$ordinateur->id]]);
-        Cache::put("ordinateur_{$ordinateur->id}_online", $resultats[$ordinateur->id], now()->addSeconds(30));
+        $ordinateur->update(['est_allumé' => $resultats[$ordinateur->id] ?? false]);
+        Cache::put("ordinateur_{$ordinateur->id}_online", $resultats[$ordinateur->id] ?? false, now()->addSeconds(30));
     }
 }
 
