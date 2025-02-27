@@ -136,7 +136,7 @@ class Ordinateur extends Model
 
 
 
-    use Illuminate\Support\Facades\Log;
+
 
 public function allumer(): void
 {
