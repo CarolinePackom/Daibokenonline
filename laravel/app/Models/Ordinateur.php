@@ -6,7 +6,6 @@ use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use phpseclib3\Net\SSH2;
 
 class Ordinateur extends Model
@@ -151,7 +150,6 @@ class Ordinateur extends Model
         }
     }
 
-    use Illuminate\Support\Facades\Cache;
 
 public static function verifierTousEnLigne()
 {
