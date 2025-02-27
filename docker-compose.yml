@@ -21,7 +21,8 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - './laravel:/var/www/html'
-        network_mode: "host"
+        networks:
+            - sail
         depends_on:
             - mariadb
 
