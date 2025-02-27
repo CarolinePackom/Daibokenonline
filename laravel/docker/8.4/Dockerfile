@@ -73,9 +73,6 @@ RUN echo "[program:reverb]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "user=sail" >> /etc/supervisor/conf.d/supervisord.conf
 
-COPY schedule.sh /usr/local/bin/schedule.sh
-RUN chmod +x /usr/local/bin/schedule.sh
-
 EXPOSE 80/tcp
 EXPOSE 8080/tcp
 

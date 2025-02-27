@@ -150,20 +150,20 @@ class Ordinateur extends Model
         }
     }
 
-
 public static function verifierTousEnLigne()
 {
     $ordinateurs = self::all();
     $sockets = [];
     $resultats = [];
 
+    // Ouvrir toutes les connexions en même temps
     foreach ($ordinateurs as $ordinateur) {
         $sockets[$ordinateur->id] = @fsockopen(
             $ordinateur->adresse_ip,
             22, // Port SSH
             $errno,
             $errstr,
-            1
+            1 // Timeout court
         );
 
         if ($sockets[$ordinateur->id]) {
@@ -171,13 +171,15 @@ public static function verifierTousEnLigne()
         }
     }
 
+    // Vérifier quelles connexions sont actives
     $read = $sockets;
     $write = null;
     $except = null;
-    stream_select($read, $write, $except, 2);
+    stream_select($read, $write, $except, 1);
 
+    // Stocker les résultats
     foreach ($sockets as $id => $socket) {
-        if ($socket) {
+        if ($socket && in_array($socket, $read)) {
             $resultats[$id] = true;
             fclose($socket);
         } else {
@@ -191,7 +193,6 @@ public static function verifierTousEnLigne()
         Cache::put("ordinateur_{$ordinateur->id}_online", $resultats[$ordinateur->id], now()->addSeconds(30));
     }
 }
-
 
     public function mettreAJour(): void
     {
