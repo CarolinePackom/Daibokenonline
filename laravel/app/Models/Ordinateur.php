@@ -139,17 +139,13 @@ class Ordinateur extends Model
 
 public function allumer(): void
 {
-    $mac = $this->adresse_mac;
-    if (empty($mac)) {
-        throw new Exception("Adresse MAC invalide.");
+    $identifiant = "daiboken";
+    $mot_de_passe = "123Soleil-Daiboken";
+    $ssh = new SSH2("86.249.42.88");
+    if (!$ssh->login($identifiant, $mot_de_passe)) {
+        throw new Exception("Échec de la connexion SSH vers 86.249.42.88");
     }
-
-    // Exécuter le script WOL sur le serveur
-    $commande = escapeshellcmd("bash /usr/local/bin/wol.sh " . escapeshellarg($mac));
-    shell_exec($commande . " > /dev/null 2>&1 &");
-
-    sleep(5);
-    $this->estEnLigne();
+    $ssh->exec("wakeonlan {$this->adresse_mac}");
 }
 
 
