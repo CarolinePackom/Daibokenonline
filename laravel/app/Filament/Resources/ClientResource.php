@@ -123,13 +123,16 @@ class ClientResource extends Resource
             ->pluck('ordinateur_id')
             ->first();
 
-        // Récupérer les ordinateurs disponibles et ceux attribués au client (même s'ils sont éteints)
+        // Récupérer les ordinateurs disponibles + ceux attribués au client actuel même s'ils sont éteints
         return [
             null => 'Aucun ordinateur',
         ] + Ordinateur::where('en_maintenance', false)
             ->where(function ($query) use ($ordinateursUtilises, $ordinateurActuel) {
-                $query->whereNotIn('id', $ordinateursUtilises) // Exclure les ordinateurs utilisés par d'autres clients
-                      ->orWhere('id', $ordinateurActuel); // Inclure l'ordinateur actuellement attribué même s'il est éteint
+                $query->whereNotIn('id', $ordinateursUtilises) // Exclure ceux utilisés par d'autres
+                      ->where(function ($q) use ($ordinateurActuel) {
+                          $q->where('est_allumé', true) // N'afficher que les ordinateurs allumés
+                            ->orWhere('id', $ordinateurActuel); // Sauf si c'est l'ordinateur actuel du client
+                      });
             })
             ->pluck('nom', 'id')
             ->toArray();
