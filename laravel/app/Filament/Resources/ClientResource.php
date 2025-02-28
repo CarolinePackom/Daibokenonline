@@ -109,52 +109,58 @@ class ClientResource extends Resource
                     }),
 
                 Tables\Columns\SelectColumn::make('ordinateur_id')
-    ->label('Ordinateur')
-    ->options(function (Client $record) {
-        // Récupérer les ordinateurs actuellement utilisés par d'autres clients
-        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
-            ->where('client_id', '!=', $record->id)
-            ->pluck('ordinateur_id')
-            ->toArray();
+                    ->label('Ordinateur')
+                    ->options(function (Client $record) {
+                        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
+                            ->where('client_id', '!=', $record->id)
+                            ->pluck('ordinateur_id')
+                            ->toArray();
 
-        // Récupérer l'ordinateur actuellement utilisé par le client
-        $ordinateurActuel = HistoriqueOrdinateur::whereNull('fin_utilisation')
-            ->where('client_id', $record->id)
-            ->pluck('ordinateur_id')
-            ->first();
+                        $ordinateurActuel = HistoriqueOrdinateur::whereNull('fin_utilisation')
+                            ->where('client_id', $record->id)
+                            ->pluck('ordinateur_id')
+                            ->first();
 
-        // Récupérer les ordinateurs disponibles + ceux attribués au client actuel même s'ils sont éteints
-        return [
-            null => 'Aucun ordinateur',
-        ] + Ordinateur::where('en_maintenance', false)
-            ->where(function ($query) use ($ordinateursUtilises, $ordinateurActuel) {
-                $query->whereNotIn('id', $ordinateursUtilises) // Exclure ceux utilisés par d'autres
-                      ->where(function ($q) use ($ordinateurActuel) {
-                          $q->where('est_allumé', true) // N'afficher que les ordinateurs allumés
-                            ->orWhere('id', $ordinateurActuel); // Sauf si c'est l'ordinateur actuel du client
-                      });
-            })
-            ->pluck('nom', 'id')
-            ->toArray();
-    })
-    ->updateStateUsing(function (Client $record, $state) {
-        if ($state) {
-            $record->connecterOrdinateur($state);
-        } else {
-            $record->deconnecterOrdinateur();
-        }
-        $record->refresh();
-    })
-    ->default(null)
-    ->selectablePlaceholder(false)
-    ->disabled(fn (?Client $record) => !$record->est_present)
-    ->getStateUsing(function (Client $record) {
-        $historique = $record->historiqueOrdinateurs()
-            ->whereNull('fin_utilisation')
-            ->first();
+                        return [
+                            null => 'Aucun ordinateur',
+                        ] + Ordinateur::where('en_maintenance', false)
+                            ->where(function ($query) use ($ordinateursUtilises, $ordinateurActuel) {
+                                $query->whereNotIn('id', $ordinateursUtilises)
+                                      ->where(function ($q) use ($ordinateurActuel) {
+                                          $q->where('est_allumé', true)
+                                            ->orWhere('id', $ordinateurActuel);
+                                      });
+                            })
+                            ->pluck('nom', 'id')
+                            ->toArray();
+                    })
+                    ->updateStateUsing(function (Client $record, $state) {
+                        if (Cache::has("selection_lock_{$record->id}")) {
+                            return;
+                        }
 
-        return $historique ? $historique->ordinateur_id : null;
-    }),
+                        if ($state) {
+                            $record->connecterOrdinateur($state);
+                        } else {
+                            $record->deconnecterOrdinateur();
+                        }
+
+                        // Placer un verrou dans le cache pendant 30 secondes
+                        Cache::put("selection_lock_{$record->id}", true, 30);
+                        $record->refresh();
+                    })
+                    ->default(null)
+                    ->selectablePlaceholder(false)
+                    ->disabled(fn (?Client $record) =>
+                        !$record->est_present || Cache::has("selection_lock_{$record->id}")
+                    )
+                    ->getStateUsing(function (Client $record) {
+                        $historique = $record->historiqueOrdinateurs()
+                            ->whereNull('fin_utilisation')
+                            ->first();
+
+                        return $historique ? $historique->ordinateur_id : null;
+                    }),
 
                 Tables\Columns\TextColumn::make('solde_credit')
                     ->label('Solde crédit')
