@@ -84,6 +84,8 @@ class Ordinateur extends Model
 
         $ssh->exec("reg add \"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization\" /v NoLockScreen /t REG_DWORD /d 1 /f");
 
+        sleep(5);
+
         $ssh->exec("shutdown /r /t 1");
     } finally {
         $ssh->disconnect();
