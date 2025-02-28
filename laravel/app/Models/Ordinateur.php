@@ -43,12 +43,12 @@ class Ordinateur extends Model
     try {
         $nom_utilisateur = trim($nom_utilisateur);
 
-        $ssh->exec("for /f \"skip=1 tokens=3\" %i in ('query session') do logoff %i");
-        $ssh->exec("logoff 1");
-
         $ssh->exec("if exist \"C:\\Users\\{$nom_utilisateur}\" rd /s /q \"C:\\Users\\{$nom_utilisateur}\"");
 
         $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
+
+        $ssh->exec("for /f \"skip=1 tokens=3\" %i in ('query session') do logoff %i");
+        $ssh->exec("logoff 1");
 
         $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoAdminLogon /f");
         $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultUserName /f");
