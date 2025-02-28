@@ -48,6 +48,13 @@ class Ordinateur extends Model
         $ssh->exec("for /f \"skip=1 tokens=3\" %i in ('query session') do logoff %i");
         $ssh->exec("logoff 1");
 
+        $ssh->exec("wmic path Win32_UserProfile where LocalPath='C:\\\\Users\\\\{$nom_utilisateur}' delete");
+
+        sleep(2);
+
+        $ssh->exec("taskkill /IM explorer.exe /F");
+        $ssh->exec("taskkill /IM dllhost.exe /F");
+
         $ssh->exec("if exist \"C:\\Users\\{$nom_utilisateur}\" rd /s /q \"C:\\Users\\{$nom_utilisateur}\"");
 
         $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoAdminLogon /f");
@@ -151,17 +158,30 @@ public static function verifierTousEnLigne()
     self::whereNotIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => false]);
 }
 
-    public function mettreAJour(): void
-    {
-        $ssh = $this->connexionSSH();
+   public function mettreAJour(): void
+{
+    $ssh = $this->connexionSSH();
 
-        try {
-            $commande = 'powershell -Command "Install-Module -Name PSWindowsUpdate -Force; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll -AutoReboot"';
-            $ssh->exec($commande);
-        } finally {
-            $ssh->disconnect();
-            $this->update(['last_update' => now()]);
-        }
+    try {
+        // Lancer la recherche des mises à jour Windows
+        $ssh->exec("usoclient StartScan");
+        sleep(5); // Attendre un peu avant de lancer l'installation
+
+        // Installer les mises à jour Windows
+        $ssh->exec("usoclient StartInstall");
+        sleep(10); // Attendre un peu pour s'assurer que l'installation commence
+
+        // Mettre à jour les pilotes NVIDIA (si installé via Winget)
+        $ssh->exec("winget upgrade --id NVIDIA.GeForceExperience --silent --accept-package-agreements");
+
+        // Vérifier les mises à jour de pilotes avec pnputil
+        $ssh->exec("pnputil /scan-devices");
+        $ssh->exec("pnputil /update-drivers oem*.inf /reboot");
+
+    } finally {
+        $ssh->disconnect();
+        $this->update(['last_update' => now()]);
     }
+}
 
 }
