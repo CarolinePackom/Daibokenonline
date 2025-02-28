@@ -109,39 +109,49 @@ class ClientResource extends Resource
                     }),
 
                 Tables\Columns\SelectColumn::make('ordinateur_id')
-                    ->label('Ordinateur')
-                    ->options(function (Client $record) {
-                        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
-                            ->where('client_id', '!=', $record->id)
-                            ->pluck('ordinateur_id')
-                            ->toArray();
+    ->label('Ordinateur')
+    ->options(function (Client $record) {
+        // Récupérer les ordinateurs actuellement utilisés par d'autres clients
+        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
+            ->where('client_id', '!=', $record->id)
+            ->pluck('ordinateur_id')
+            ->toArray();
 
-                        return [
-                            null => 'Aucun ordinateur',
-                        ] + Ordinateur::where('en_maintenance', false)
-                            ->whereNotIn('id', $ordinateursUtilises)
-                            ->where('est_allumé', true)
-                            ->pluck('nom', 'id')
-                            ->toArray();
-                    })
-                    ->updateStateUsing(function (Client $record, $state) {
-                        if ($state) {
-                            $record->connecterOrdinateur($state);
-                        } else {
-                            $record->deconnecterOrdinateur();
-                        }
-                        $record->refresh();
-                    })
-                    ->default(null)
-                    ->selectablePlaceholder(false)
-                    ->disabled(fn (?Client $record) => !$record->est_present)
-                    ->getStateUsing(function (Client $record) {
-                        $historique = $record->historiqueOrdinateurs()
-                            ->whereNull('fin_utilisation')
-                            ->first();
+        // Récupérer l'ordinateur actuellement utilisé par le client
+        $ordinateurActuel = HistoriqueOrdinateur::whereNull('fin_utilisation')
+            ->where('client_id', $record->id)
+            ->pluck('ordinateur_id')
+            ->first();
 
-                        return $historique ? $historique->ordinateur_id : null;
-                    }),
+        // Récupérer les ordinateurs disponibles et ceux attribués au client (même s'ils sont éteints)
+        return [
+            null => 'Aucun ordinateur',
+        ] + Ordinateur::where('en_maintenance', false)
+            ->where(function ($query) use ($ordinateursUtilises, $ordinateurActuel) {
+                $query->whereNotIn('id', $ordinateursUtilises) // Exclure les ordinateurs utilisés par d'autres clients
+                      ->orWhere('id', $ordinateurActuel); // Inclure l'ordinateur actuellement attribué même s'il est éteint
+            })
+            ->pluck('nom', 'id')
+            ->toArray();
+    })
+    ->updateStateUsing(function (Client $record, $state) {
+        if ($state) {
+            $record->connecterOrdinateur($state);
+        } else {
+            $record->deconnecterOrdinateur();
+        }
+        $record->refresh();
+    })
+    ->default(null)
+    ->selectablePlaceholder(false)
+    ->disabled(fn (?Client $record) => !$record->est_present)
+    ->getStateUsing(function (Client $record) {
+        $historique = $record->historiqueOrdinateurs()
+            ->whereNull('fin_utilisation')
+            ->first();
+
+        return $historique ? $historique->ordinateur_id : null;
+    }),
 
                 Tables\Columns\TextColumn::make('solde_credit')
                     ->label('Solde crédit')
