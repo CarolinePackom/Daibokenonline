@@ -42,31 +42,15 @@ class Ordinateur extends Model
 
     try {
         $nom_utilisateur = trim($nom_utilisateur);
-        $dossierUtilisateur = "C:\\Users\\{$nom_utilisateur}";
-
-        $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
         $ssh->exec("for /f \"skip=1 tokens=3\" %i in ('query session') do logoff %i");
         $ssh->exec("logoff 1");
 
-        sleep(2);
+        $ssh->exec("if exist \"C:\\Users\\{$nom_utilisateur}\" rd /s /q \"C:\\Users\\{$nom_utilisateur}\"");
 
-        $ssh->exec("taskkill /IM explorer.exe /F");
-        $ssh->exec("taskkill /IM dllhost.exe /F");
-        $ssh->exec("taskkill /F /IM cmd.exe");
-
-        $ssh->exec("wmic path Win32_UserProfile where LocalPath='C:\\\\Users\\\\{$nom_utilisateur}' delete");
-        $ssh->exec("wmic path Win32_UserProfile where Name='C:\\\\Users\\\\{$nom_utilisateur}' delete");
-
-        $output = $ssh->exec("if exist \"{$dossierUtilisateur}\" echo EXISTS");
-        if (trim($output) === "EXISTS") {
-            // 8️⃣ Supprimer le dossier
-            $ssh->exec("rd /s /q \"{$dossierUtilisateur}\"");
-        }
+        $ssh->exec("net user \"{$nom_utilisateur}\" /delete");
 
         $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\" /f");
-
-        $ssh->exec("if exist \"C:\\Users\\{$nom_utilisateur}\" rd /s /q \"C:\\Users\\{$nom_utilisateur}\"");
 
         $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v AutoAdminLogon /f");
         $ssh->exec("reg delete \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" /v DefaultUserName /f");
