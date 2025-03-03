@@ -109,58 +109,68 @@ class ClientResource extends Resource
                     }),
 
                 Tables\Columns\SelectColumn::make('ordinateur_id')
-                    ->label('Ordinateur')
-                    ->options(function (Client $record) {
-                        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
-                            ->where('client_id', '!=', $record->id)
-                            ->pluck('ordinateur_id')
-                            ->toArray();
+    ->label('Ordinateur')
+    ->options(function (Client $record) {
+        $ordinateursUtilises = HistoriqueOrdinateur::whereNull('fin_utilisation')
+            ->where('client_id', '!=', $record->id)
+            ->pluck('ordinateur_id')
+            ->toArray();
 
-                        $ordinateurActuel = HistoriqueOrdinateur::whereNull('fin_utilisation')
-                            ->where('client_id', $record->id)
-                            ->pluck('ordinateur_id')
-                            ->first();
+        // Récupérer l'historique d'utilisation en cours (s'il existe)
+        $historique = $record->historiqueOrdinateurs()->whereNull('fin_utilisation')->first();
+        $ordinateurActuel = $historique ? $historique->ordinateur_id : null;
 
-                        return [
-                            null => 'Aucun ordinateur',
-                        ] + Ordinateur::where('en_maintenance', false)
-                            ->where(function ($query) use ($ordinateursUtilises, $ordinateurActuel) {
-                                $query->whereNotIn('id', $ordinateursUtilises)
-                                      ->where(function ($q) use ($ordinateurActuel) {
-                                          $q->where('est_allumé', true)
-                                            ->orWhere('id', $ordinateurActuel);
-                                      });
-                            })
-                            ->pluck('nom', 'id')
-                            ->toArray();
-                    })
-                    ->updateStateUsing(function (Client $record, $state) {
-                        if (Cache::has("selection_lock_{$record->id}")) {
-                            return;
-                        }
+        // Récupération de la liste des ordinateurs disponibles
+        $ordinateurs = Ordinateur::where('en_maintenance', false)
+            ->where(function ($query) use ($ordinateursUtilises, $ordinateurActuel) {
+                $query->whereNotIn('id', $ordinateursUtilises)
+                      ->where(function ($q) use ($ordinateurActuel) {
+                          $q->where('est_allumé', true)
+                            ->orWhere('id', $ordinateurActuel);
+                      });
+            })
+            ->pluck('nom', 'id');
 
-                        if ($state) {
-                            $record->connecterOrdinateur($state);
-                        } else {
-                            $record->deconnecterOrdinateur();
-                        }
+        // Si le client utilise un ordinateur, ajoute le temps écoulé à son nom
+        if ($ordinateurActuel && $historique) {
+            $timeUsed = $historique->created_at->diffForHumans(null, true);
+            $ordinateurs = $ordinateurs->map(function ($name, $id) use ($ordinateurActuel, $timeUsed) {
+                if ($id == $ordinateurActuel) {
+                    return $name . ' depuis ' . $timeUsed;
+                }
+                return $name;
+            });
+        }
 
-                        // Placer un verrou dans le cache pendant 30 secondes
-                        Cache::put("selection_lock_{$record->id}", true, 30);
-                        $record->refresh();
-                    })
-                    ->default(null)
-                    ->selectablePlaceholder(false)
-                    ->disabled(fn (?Client $record) =>
-                        !$record->est_present || Cache::has("selection_lock_{$record->id}")
-                    )
-                    ->getStateUsing(function (Client $record) {
-                        $historique = $record->historiqueOrdinateurs()
-                            ->whereNull('fin_utilisation')
-                            ->first();
+        return [null => 'Aucun ordinateur'] + $ordinateurs->toArray();
+    })
+    ->updateStateUsing(function (Client $record, $state) {
+        if (Cache::has("selection_lock_{$record->id}")) {
+            return;
+        }
 
-                        return $historique ? $historique->ordinateur_id : null;
-                    }),
+        if ($state) {
+            $record->connecterOrdinateur($state);
+        } else {
+            $record->deconnecterOrdinateur();
+        }
+
+        // Placer un verrou dans le cache pendant 30 secondes
+        Cache::put("selection_lock_{$record->id}", true, 30);
+        $record->refresh();
+    })
+    ->default(null)
+    ->selectablePlaceholder(false)
+    ->disabled(fn (?Client $record) =>
+        !$record->est_present || Cache::has("selection_lock_{$record->id}")
+    )
+    ->getStateUsing(function (Client $record) {
+        $historique = $record->historiqueOrdinateurs()
+            ->whereNull('fin_utilisation')
+            ->first();
+
+        return $historique ? $historique->ordinateur_id : null;
+    }),
 
                 Tables\Columns\TextColumn::make('solde_credit')
                     ->label('Solde crédit')
