@@ -33,14 +33,12 @@ class NfcController extends Controller
 
         if ($wasPresent) {
             $client->deconnecterOrdinateur();
-        }
-        else {
+        } else {
             $this->stockageCache('dernier_client_nfc', [
                 'prenom' => $client->prenom,
             ]);
         }
     }
-
 
     private function aucunClientNfc($IdNfc){
         $this->stockageCache('dernier_id_nfc', $IdNfc);
@@ -101,12 +99,11 @@ class NfcController extends Controller
                 break;
             }
 
-            $cachedData = Cache::pull($cacheKey); // Récupération et suppression
+            $cachedData = Cache::pull($cacheKey);
 
             if ($cachedData) {
                 echo "data: " . json_encode($formatter($cachedData)) . "\n\n";
             } else {
-                // Envoyer un ping pour garder la connexion active
                 echo "event: ping\n";
                 echo "data: {}\n\n";
             }
@@ -114,7 +111,7 @@ class NfcController extends Controller
             @ob_flush();
             @flush();
 
-            usleep(500000); // Pause pour limiter la charge serveur
+            usleep(500000);
         }
 
         echo "event: close\n";
