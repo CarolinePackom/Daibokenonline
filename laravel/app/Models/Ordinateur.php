@@ -156,25 +156,37 @@ public static function verifierTousEnLigne()
     $ssh = $this->connexionSSH();
 
     try {
-        // Lancer la recherche des mises à jour Windows
-        $ssh->exec("usoclient StartScan");
-        sleep(5); // Attendre un peu avant de lancer l'installation
+        // Vérifier et installer les mises à jour Windows
+        $ssh->exec("echo '=== Démarrage des mises à jour Windows ===' > C:\\update_log.txt");
 
-        // Installer les mises à jour Windows
-        $ssh->exec("usoclient StartInstall");
-        sleep(10); // Attendre un peu pour s'assurer que l'installation commence
+        $ssh->exec("usoclient StartScan >> C:\\update_log.txt 2>&1");
+        sleep(5);
 
-        // Mettre à jour les pilotes NVIDIA (si installé via Winget)
-        $ssh->exec("winget upgrade --id NVIDIA.GeForceExperience --silent --accept-package-agreements");
+        $ssh->exec("usoclient StartInstall >> C:\\update_log.txt 2>&1");
+        sleep(10);
 
-        // Vérifier les mises à jour de pilotes avec pnputil
-        $ssh->exec("pnputil /scan-devices");
-        $ssh->exec("pnputil /update-drivers oem*.inf /reboot");
+        // Vérifier si un redémarrage est nécessaire après l'installation des mises à jour Windows
+        $rebootRequired = $ssh->exec("if (Test-Path 'C:\\Windows\\System32\\RebootRequired') { echo 'REBOOT_NEEDED' }");
+
+        // Mettre à jour les pilotes NVIDIA si disponible avec winget
+        $ssh->exec("winget upgrade --id NVIDIA.GeForceExperience --silent --accept-package-agreements >> C:\\update_log.txt 2>&1");
+
+        // Vérifier et mettre à jour tous les pilotes avec pnputil
+        $ssh->exec("pnputil /scan-devices >> C:\\update_log.txt 2>&1");
+        $ssh->exec("pnputil /update-drivers oem*.inf /force >> C:\\update_log.txt 2>&1");
+
+        // Vérifier si un redémarrage est nécessaire après la mise à jour des pilotes
+        $driverReboot = $ssh->exec("Get-WmiObject -Query 'SELECT * FROM Win32_ComputerSystem' | Select-Object -ExpandProperty RequiresReboot");
+
+        if (str_contains($rebootRequired, 'REBOOT_NEEDED') || str_contains($driverReboot, 'True')) {
+            $ssh->exec("shutdown /r /t 60"); // Redémarrage dans 60 secondes
+        }
 
     } finally {
         $ssh->disconnect();
         $this->update(['last_update' => now()]);
     }
 }
+
 
 }
