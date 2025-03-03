@@ -102,26 +102,36 @@ class Ordinateur extends Model
     }
 
     public function eteindre(): void
-{
-    $client = $this->clientActuel()->first();
+    {
+        $client = $this->clientActuel()->first();
+        if ($client) {
+            $client->deconnecterOrdinateur();
+            sleep(5);
+        }
 
-    if ($client) {
-        $client->deconnecterOrdinateur();
-        sleep(5);
+        try {
+            $ssh = $this->connexionSSH();
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'extinction de l'ordinateur {$this->adresse_ip}: " . $e->getMessage());
+            return;
+        }
+
+        try {
+            $ssh->exec("shutdown /s /f /t 0");
+        } finally {
+            $ssh->disconnect();
+        }
     }
 
-    $ssh = $this->connexionSSH();
-
-    try {
-        $ssh->exec("shutdown /s /f /t 0");
-    } finally {
-        $ssh->disconnect();
-    }
-}
 
     public function allumer(): void
     {
-        $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '192.168.1.28');
+        try {
+            $ssh = $this->connexionSSH('daiboken', '123Soleil-Daiboken', '192.168.1.28');
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'allumage de l'ordinateur {$this->adresse_ip}: " . $e->getMessage());
+            return;
+        }
 
         $mac = str_replace('-', ':', $this->adresse_mac);
         try {
@@ -131,70 +141,63 @@ class Ordinateur extends Model
         }
     }
 
-public static function verifierTousEnLigne()
-{
-    $ordinateurs = self::all();
-    $resultats = [];
+    public static function verifierTousEnLigne()
+    {
+        $ordinateurs = self::all();
+        $resultats = [];
 
-    foreach ($ordinateurs as $ordinateur) {
-        $fp = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
+        foreach ($ordinateurs as $ordinateur) {
+            $fp = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
 
-        if ($fp) {
-            fclose($fp);
-            $resultats[$ordinateur->id] = true;
-        } else {
-            $resultats[$ordinateur->id] = false;
-        }
-    }
-
-    self::whereIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => true]);
-    self::whereNotIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => false]);
-}
-
-public function mettreAJour(): void
-{
-    $ssh = $this->connexionSSH();
-
-    try {
-        // Démarrer la recherche et l'installation des mises à jour Windows
-        $ssh->exec("echo '=== Démarrage des mises à jour Windows ===' > C:\\update_log.txt");
-
-        $ssh->exec("usoclient StartScan >> C:\\update_log.txt 2>&1");
-        sleep(5);
-
-        $ssh->exec("usoclient StartInstall >> C:\\update_log.txt 2>&1");
-        sleep(10);
-
-        // Vérifier si un redémarrage est nécessaire après l'installation des mises à jour Windows
-        $rebootRequired = $ssh->exec("if exist C:\\Windows\\WinSxS\\pending.xml (echo 'REBOOT_NEEDED')");
-
-        // Vérifier et mettre à jour tous les pilotes avec pnputil
-        $ssh->exec("echo '=== Mise à jour des pilotes ===' >> C:\\update_log.txt");
-        $ssh->exec("pnputil /scan-devices >> C:\\update_log.txt 2>&1");
-
-        // Mettre à jour tous les pilotes disponibles
-        $driversList = $ssh->exec("pnputil /enum-drivers | findstr 'oem'"); // Liste des pilotes OEM installés
-        $driversArray = explode("\n", trim($driversList));
-
-        foreach ($driversArray as $driver) {
-            preg_match('/oem\d+\.inf/', $driver, $matches);
-            if (!empty($matches[0])) {
-                $ssh->exec("pnputil /update-driver {$matches[0]} /force >> C:\\update_log.txt 2>&1");
+            if ($fp) {
+                fclose($fp);
+                $resultats[$ordinateur->id] = true;
+            } else {
+                $resultats[$ordinateur->id] = false;
             }
         }
 
-        // Vérifier si un redémarrage est nécessaire après la mise à jour des pilotes
-        $driverReboot = $ssh->exec("wmic qfe list brief | findstr /i 'Reboot'");
+        self::whereIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => true]);
+        self::whereNotIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => false]);
+    }
 
-        // Si une mise à jour ou un pilote nécessite un redémarrage, on redémarre
-        if (str_contains($rebootRequired, 'REBOOT_NEEDED') || !empty($driverReboot)) {
-            $ssh->exec("shutdown /r /t 60"); // Redémarrage dans 60 secondes
+    public function mettreAJour(): void
+    {
+        try {
+            $ssh = $this->connexionSSH();
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de la mise à jour de l'ordinateur {$this->adresse_ip}: " . $e->getMessage());
+            return;
         }
 
-    } finally {
-        $ssh->disconnect();
-        $this->update(['last_update' => now()]);
+        try {
+            $ssh->exec("echo '=== Démarrage des mises à jour Windows ===' > C:\\update_log.txt");
+            $ssh->exec("usoclient StartScan >> C:\\update_log.txt 2>&1");
+            sleep(5);
+            $ssh->exec("usoclient StartInstall >> C:\\update_log.txt 2>&1");
+            sleep(10);
+
+            $rebootRequired = $ssh->exec("if exist C:\\Windows\\WinSxS\\pending.xml (echo 'REBOOT_NEEDED')");
+            $ssh->exec("echo '=== Mise à jour des pilotes ===' >> C:\\update_log.txt");
+            $ssh->exec("pnputil /scan-devices >> C:\\update_log.txt 2>&1");
+
+            $driversList = $ssh->exec("pnputil /enum-drivers | findstr 'oem'");
+            $driversArray = explode("\n", trim($driversList));
+            foreach ($driversArray as $driver) {
+                preg_match('/oem\d+\.inf/', $driver, $matches);
+                if (!empty($matches[0])) {
+                    $ssh->exec("pnputil /update-driver {$matches[0]} /force >> C:\\update_log.txt 2>&1");
+                }
+            }
+
+            $driverReboot = $ssh->exec("wmic qfe list brief | findstr /i 'Reboot'");
+            if (str_contains($rebootRequired, 'REBOOT_NEEDED') || !empty($driverReboot)) {
+                $ssh->exec("shutdown /r /t 60");
+            }
+        } finally {
+            $ssh->disconnect();
+            $this->update(['last_update' => now()]);
+        }
     }
-}
 
 }

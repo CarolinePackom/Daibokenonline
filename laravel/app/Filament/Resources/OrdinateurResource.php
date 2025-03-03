@@ -109,7 +109,11 @@ class OrdinateurResource extends Resource
                     ->color('success')
                     ->action(function () {
                         Ordinateur::all()->each(function ($ordinateur) {
-                            $ordinateur->allumer();
+                            try {
+                                $ordinateur->allumer();
+                            } catch (\Exception $e) {
+                                \Log::error("Erreur lors de l'allumage de l'ordinateur {$ordinateur->adresse_ip}: " . $e->getMessage());
+                            }
                         });
                         sleep(30);
                     })
@@ -121,7 +125,11 @@ class OrdinateurResource extends Resource
                     ->action(function () {
                         Ordinateur::all()->each(function ($ordinateur) {
                             if ($ordinateur->est_allumé) {
-                                $ordinateur->eteindre();
+                                try {
+                                    $ordinateur->eteindre();
+                                } catch (\Exception $e) {
+                                    \Log::error("Erreur lors de l'extinction de l'ordinateur {$ordinateur->adresse_ip}: " . $e->getMessage());
+                                }
                             }
                         });
                         sleep(30);
@@ -135,7 +143,11 @@ class OrdinateurResource extends Resource
                     ->label('Tout mettre à jour')
                     ->action(function () {
                         Ordinateur::all()->each(function ($ordinateur) {
-                            $ordinateur->mettreAJour();
+                            try {
+                                $ordinateur->mettreAJour();
+                            } catch (\Exception $e) {
+                                \Log::error("Erreur lors de la mise à jour de l'ordinateur {$ordinateur->adresse_ip}: " . $e->getMessage());
+                            }
                         });
                     })
                     ->color('gray')
