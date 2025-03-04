@@ -12,12 +12,7 @@ class CreateClient extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        $serviceIds = [1, 2];
-
-        return route('filament.admin.resources.ventes.create', [
-            'client_id' => $this->record->id,
-            'service_ids' => implode(',', $serviceIds),
-        ]);
+        return route('filament.admin.resources.clients.index');
     }
 
 }
