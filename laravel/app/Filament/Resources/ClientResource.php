@@ -133,7 +133,18 @@ class ClientResource extends Resource
 
         // Si le client utilise un ordinateur, ajoute le temps écoulé à son nom
         if ($ordinateurActuel && $historique) {
-            $timeUsed = $historique->created_at->diffForHumans(null, true);
+            $diff = $historique->created_at->diff(now());
+
+            // Construire la chaîne d'affichage avec heures et minutes
+            $timeUsed = '';
+            if ($diff->h > 0) {
+                $timeUsed .= $diff->h . 'h ';
+            }
+            if ($diff->i > 0 || $timeUsed === '') { // Toujours afficher les minutes
+                $timeUsed .= $diff->i . 'min';
+            }
+
+            // Modifier la liste des ordinateurs
             $ordinateurs = $ordinateurs->map(function ($name, $id) use ($ordinateurActuel, $timeUsed) {
                 if ($id == $ordinateurActuel) {
                     return $name . ' depuis ' . $timeUsed;
