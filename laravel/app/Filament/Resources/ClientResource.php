@@ -204,7 +204,7 @@ class ClientResource extends Resource
                     ->hiddenLabel()
                     ->icon('heroicon-o-shopping-bag'),
             ])
-            ->poll('2s')
+            ->poll('5s')
             ->paginated(false)
             ->deferLoading()
             ->defaultSort('est_present', 'desc');

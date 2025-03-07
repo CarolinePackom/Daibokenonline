@@ -29,7 +29,6 @@ class NfcController extends Controller
     private function clientNfc($client)
     {
         $wasPresent = $client->est_present;
-        $client->update(['est_present' => !$client->est_present]);
 
         if ($wasPresent) {
             $client->deconnecterOrdinateur();
@@ -38,6 +37,8 @@ class NfcController extends Controller
                 'prenom' => $client->prenom,
             ]);
         }
+
+        $client->update(['est_present' => !$client->est_present]);
     }
 
     private function aucunClientNfc($IdNfc){

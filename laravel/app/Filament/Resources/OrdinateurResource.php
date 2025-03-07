@@ -154,7 +154,7 @@ class OrdinateurResource extends Resource
                     ->visible(fn () => Ordinateur::where('est_allumé', true)->count() > 0),
             ])
             ->paginated(false)
-            ->poll('2s');
+            ->poll('5s');
     }
 
     public static function getRelations(): array
