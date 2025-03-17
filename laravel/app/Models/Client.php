@@ -73,17 +73,15 @@ class Client extends Model
             ->first();
 
         if ($historique) {
-            // Récupérer l'ordinateur du client
             $ordinateur = Ordinateur::find($historique->ordinateur_id);
 
             if ($ordinateur) {
-                // Supprimer l'utilisateur Windows
                 $nom_utilisateur = $this->prenom . " " . $this->nom;
                 $ordinateur->supprimerUtilisateur($nom_utilisateur);
             }
 
-            // Mettre à jour l'historique et la base de données
             $historique->update(['fin_utilisation' => now()]);
+            $historique->save();
         }
     }
 

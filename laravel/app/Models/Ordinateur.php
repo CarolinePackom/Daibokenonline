@@ -95,19 +95,20 @@ class Ordinateur extends Model
 
     public function clientActuel()
     {
-        return $this->hasOne(Client::class, 'id', 'id')
-            ->whereHas('historiqueOrdinateurs', function ($query) {
-                $query->whereNull('fin_utilisation');
-            });
+        return $this->hasOne(HistoriqueOrdinateur::class, 'ordinateur_id')
+            ->whereNull('fin_utilisation')
+            ->with('client');
     }
+
 
     public function eteindre(): void
     {
-        $client = $this->clientActuel()->first();
-        if ($client) {
-            $client->deconnecterOrdinateur();
+        $historique = $this->clientActuel()->first();
+        if ($historique && $historique->client) {
+            $historique->client->deconnecterOrdinateur();
             sleep(5);
         }
+
 
         try {
             $ssh = $this->connexionSSH();
@@ -122,7 +123,6 @@ class Ordinateur extends Model
             $ssh->disconnect();
         }
     }
-
 
     public function allumer(): void
     {
