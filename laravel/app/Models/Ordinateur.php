@@ -146,27 +146,18 @@ class Ordinateur extends Model
         $resultats = [];
 
         foreach ($ordinateurs as $ordinateur) {
-            // Windows : ping -n 1 -w 1000 <ip>
-            // Linux (Docker, serveur) : ping -c 1 -W 1 <ip>
-            $pingCmd = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
-                ? "ping -n 1 -w 1000 {$ordinateur->adresse_ip}"
-                : "ping -c 1 -W 1 {$ordinateur->adresse_ip}";
+            $fp = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
 
-            exec($pingCmd, $output, $status);
-
-            $estAllume = ($status === 0);
-            $resultats[$ordinateur->id] = $estAllume;
-        }
-
-        // Mettre à jour uniquement ceux dont l'état a changé
-        foreach ($resultats as $id => $etat) {
-            $ordinateur = Ordinateur::find($id);
-            if ($ordinateur && $ordinateur->est_allumé !== $etat) {
-                $ordinateur->update([
-                    'est_allumé' => $etat,
-                ]);
+            if ($fp) {
+                fclose($fp);
+                $resultats[$ordinateur->id] = true;
+            } else {
+                $resultats[$ordinateur->id] = false;
             }
         }
+
+        self::whereIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => true]);
+        self::whereNotIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => false]);
     }
 
     public function mettreAJour(): void
