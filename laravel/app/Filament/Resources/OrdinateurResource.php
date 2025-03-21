@@ -157,11 +157,6 @@ class OrdinateurResource extends Resource
                     ->label('Mot de passe Admin')
                     ->icon('heroicon-o-key')
                     ->form([
-                        Forms\Components\TextInput::make('identifiant')
-                            ->label('Identifiant SSH')
-                            ->default(fn () => \App\Models\Identifiant::first()?->identifiant ?? 'Admin')
-                            ->required(),
-
                         Forms\Components\TextInput::make('mot_de_passe')
                             ->label('Nouveau mot de passe SSH')
                             ->password()
