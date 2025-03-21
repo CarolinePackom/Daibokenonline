@@ -25,9 +25,16 @@ class Ordinateur extends Model
         return $this->hasMany(HistoriqueOrdinateur::class);
     }
 
-    protected function connexionSSH($identifiant='Admin', $mot_de_passe='123Soleil-Daiboken', $ip=null): SSH2
+    protected function connexionSSH($identifiant=null, $mot_de_passe=null, $ip=null): SSH2
     {
         $ip = $ip ?? $this->adresse_ip;
+        if (!$identifiant || !$mot_de_passe) {
+            $global = Identifiant::getGlobal();
+
+            $identifiant = $identifiant ?? $global->identifiant;
+            $mot_de_passe = $mot_de_passe ?? $global->mot_de_passe;
+        }
+
         $ssh = new SSH2($ip);
         if (!$ssh->login($identifiant, $mot_de_passe)) {
             throw new Exception("Échec de la connexion SSH vers {$ip}");

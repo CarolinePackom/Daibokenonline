@@ -104,6 +104,41 @@ class OrdinateurResource extends Resource
                     ->visible(fn (Ordinateur $record) => $record->est_allumé),
             ])
             ->headerActions([
+                Tables\Actions\Action::make('changer_mdp_global')
+    ->label('Changer mot de passe global')
+    ->icon('heroicon-o-key')
+    ->form([
+        Forms\Components\TextInput::make('identifiant')
+            ->label('Identifiant SSH')
+            ->default(fn () => \App\Models\Identifiant::getGlobal()?->identifiant ?? 'Admin')
+            ->required(),
+
+        Forms\Components\TextInput::make('mot_de_passe')
+            ->label('Mot de passe SSH')
+            ->password()
+            ->required(),
+    ])
+    ->action(function (array $data) {
+        $identifiant = \App\Models\Identifiant::first();
+
+        if (!$identifiant) {
+            $identifiant = new \App\Models\Identifiant();
+        }
+
+        $identifiant->identifiant = $data['identifiant'];
+        $identifiant->mot_de_passe = $data['mot_de_passe'];
+        $identifiant->save();
+
+        \Filament\Notifications\Notification::make()
+            ->title('Mot de passe mis à jour')
+            ->success()
+            ->send();
+    })
+    ->color('warning')
+    ->requiresConfirmation()
+    ->modalHeading('Modifier le mot de passe global')
+    ->modalSubmitActionLabel('Enregistrer')
+    ->modalDescription("Ce mot de passe sera utilisé pour se connecter en SSH à tous les ordinateurs."),
                 Tables\Actions\Action::make('tout_allumer')
                     ->label('Tout allumer')
                     ->color('success')
