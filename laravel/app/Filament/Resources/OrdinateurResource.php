@@ -157,30 +157,63 @@ class OrdinateurResource extends Resource
                     ->label('Mot de passe Admin')
                     ->icon('heroicon-o-key')
                     ->form([
+                        Forms\Components\TextInput::make('identifiant')
+                            ->label('Identifiant SSH')
+                            ->default(fn () => \App\Models\Identifiant::first()?->identifiant ?? 'Admin')
+                            ->required(),
+
                         Forms\Components\TextInput::make('mot_de_passe')
-                            ->label('Mot de passe SSH')
+                            ->label('Nouveau mot de passe SSH')
                             ->password()
                             ->revealable()
-                            ->required()
-                            ->default(fn () => \App\Models\Identifiant::first()?->mot_de_passe ?? ''),
+                            ->required(),
                     ])
                     ->action(function (array $data) {
-                        $identifiant = \App\Models\Identifiant::first();
+                        // Vérifie que TOUS les ordis sont allumés
+                        $total = \App\Models\Ordinateur::count();
+                        $allumes = \App\Models\Ordinateur::where('est_allumé', true)->count();
 
+                        if ($total !== $allumes) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Erreur')
+                                ->body("Tous les ordinateurs doivent être allumés pour changer le mot de passe.")
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
+                        $identifiant = \App\Models\Identifiant::first() ?? new \App\Models\Identifiant();
+                        $ancienMdp = $identifiant->mot_de_passe;
                         $identifiant->identifiant = $data['identifiant'];
                         $identifiant->mot_de_passe = $data['mot_de_passe'];
                         $identifiant->save();
 
+                        $totalMachines = 0;
+                        $machinesOk = 0;
+
+                        \App\Models\Ordinateur::where('est_allumé', true)->each(function ($ordinateur) use ($ancienMdp, $data, &$totalMachines, &$machinesOk) {
+                            $totalMachines++;
+
+                            try {
+                                $ordinateur->changerMotDePasseLocal($ancienMdp, $data['mot_de_passe']);
+                                $machinesOk++;
+                            } catch (\Throwable $e) {
+                                \Log::warning("Erreur changement mot de passe sur {$ordinateur->adresse_ip} : " . $e->getMessage());
+                            }
+                        });
+
                         \Filament\Notifications\Notification::make()
                             ->title('Mot de passe mis à jour')
+                            ->body("Mise à jour effectuée sur {$machinesOk}/{$totalMachines} ordinateurs.")
                             ->success()
                             ->send();
                     })
+                    ->visible(fn () => \App\Models\Ordinateur::where('est_allumé', false)->count() === 0)
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Modifier le mot de passe')
                     ->modalSubmitActionLabel('Enregistrer')
-                    ->modalDescription("Le mot de passe est utilisé pour se connecter aux ordinateurs en Admin."),
+                    ->modalDescription("Le mot de passe est utilisé pour se connecter à tous les ordinateurs."),
             ])
             ->paginated(false)
             ->poll('5s');

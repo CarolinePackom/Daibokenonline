@@ -206,4 +206,21 @@ class Ordinateur extends Model
         }
     }
 
+    public function changerMotDePasseLocal(string $ancienMdp, string $nouveauMdp): void
+    {
+        try {
+            $ssh = $this->connexionSSH(null, $ancienMdp);
+        } catch (\Exception $e) {
+            \Log::warning("Connexion échouée à {$this->adresse_ip} pour changer le mot de passe : " . $e->getMessage());
+            return;
+        }
+
+        try {
+            $identifiant = \App\Models\Identifiant::getGlobal()->identifiant;
+            $ssh->exec("net user \"{$identifiant}\" \"{$nouveauMdp}\"");
+        } finally {
+            $ssh->disconnect();
+        }
+    }
+
 }
