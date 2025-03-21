@@ -5,7 +5,6 @@ namespace App\Models;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 use phpseclib3\Net\SSH2;
 
 class Ordinateur extends Model
@@ -147,18 +146,27 @@ class Ordinateur extends Model
         $resultats = [];
 
         foreach ($ordinateurs as $ordinateur) {
-            $fp = @fsockopen($ordinateur->adresse_ip, 22, $errno, $errstr, 1);
+            // Windows : ping -n 1 -w 1000 <ip>
+            // Linux (Docker, serveur) : ping -c 1 -W 1 <ip>
+            $pingCmd = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
+                ? "ping -n 1 -w 1000 {$ordinateur->adresse_ip}"
+                : "ping -c 1 -W 1 {$ordinateur->adresse_ip}";
 
-            if ($fp) {
-                fclose($fp);
-                $resultats[$ordinateur->id] = true;
-            } else {
-                $resultats[$ordinateur->id] = false;
-            }
+            exec($pingCmd, $output, $status);
+
+            $estAllume = ($status === 0);
+            $resultats[$ordinateur->id] = $estAllume;
         }
 
-        self::whereIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => true]);
-        self::whereNotIn('id', array_keys(array_filter($resultats, fn($v) => $v)))->update(['est_allumé' => false]);
+        // Mettre à jour uniquement ceux dont l'état a changé
+        foreach ($resultats as $id => $etat) {
+            $ordinateur = Ordinateur::find($id);
+            if ($ordinateur && $ordinateur->est_allumé !== $etat) {
+                $ordinateur->update([
+                    'est_allumé' => $etat,
+                ]);
+            }
+        }
     }
 
     public function mettreAJour(): void
