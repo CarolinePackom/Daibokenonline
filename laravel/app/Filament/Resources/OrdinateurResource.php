@@ -180,7 +180,6 @@ class OrdinateurResource extends Resource
 
                         $identifiant = \App\Models\Identifiant::first() ?? new \App\Models\Identifiant();
                         $ancienMdp = $identifiant->mot_de_passe;
-                        $identifiant->identifiant = $data['identifiant'];
                         $identifiant->mot_de_passe = $data['mot_de_passe'];
                         $identifiant->save();
 
