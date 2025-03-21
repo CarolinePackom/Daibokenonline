@@ -161,6 +161,7 @@ class OrdinateurResource extends Resource
                             ->label('Nouveau mot de passe SSH')
                             ->password()
                             ->revealable()
+                            ->default(fn () => \App\Models\Identifiant::getGlobal()?->mot_de_passe)
                             ->required(),
                     ])
                     ->action(function (array $data) {
