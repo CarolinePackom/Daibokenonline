@@ -94,6 +94,7 @@ class OrdinateurResource extends Resource
                     ->dateTimeTooltip()
             ])
             ->actions([
+                /*
                 Tables\Actions\Action::make('mettre_a_jour')
                     ->label('Mettre à jour')
                     ->button()
@@ -102,6 +103,7 @@ class OrdinateurResource extends Resource
                     })
                     ->color('gray')
                     ->visible(fn (Ordinateur $record) => $record->est_allumé),
+                */
             ])
             ->headerActions([
                 Tables\Actions\Action::make('tout_allumer')
@@ -139,6 +141,7 @@ class OrdinateurResource extends Resource
                     ->modalDescription('Êtes-vous sûr de vouloir éteindre tous les ordinateurs ?')
                     ->visible(fn () => Ordinateur::where('est_allumé', true)->count() > 0),
 
+                /*
                 Tables\Actions\Action::make('tout_mettre_a_jour')
                     ->label('Tout mettre à jour')
                     ->action(function () {
@@ -152,6 +155,7 @@ class OrdinateurResource extends Resource
                     })
                     ->color('gray')
                     ->visible(fn () => Ordinateur::where('est_allumé', true)->count() > 0),
+                */
 
                 Tables\Actions\Action::make('changer_mdp_global')
                     ->label('Mot de passe Admin')
