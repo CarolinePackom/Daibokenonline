@@ -104,32 +104,6 @@ class OrdinateurResource extends Resource
                     ->visible(fn (Ordinateur $record) => $record->est_allumé),
             ])
             ->headerActions([
-                Tables\Actions\Action::make('changer_mdp_global')
-                    ->label('Modifier le mot de passe')
-                    ->icon('heroicon-o-key')
-                    ->form([
-                        Forms\Components\TextInput::make('mot_de_passe')
-                            ->label('Mot de passe SSH')
-                            ->password()
-                            ->revealable(),
-                    ])
-                    ->action(function (array $data) {
-                        $identifiant = \App\Models\Identifiant::first();
-
-                        $identifiant->identifiant = $data['identifiant'];
-                        $identifiant->mot_de_passe = $data['mot_de_passe'];
-                        $identifiant->save();
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Mot de passe mis à jour')
-                            ->success()
-                            ->send();
-                    })
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading('Modifier le mot de passe')
-                    ->modalSubmitActionLabel('Enregistrer')
-                    ->modalDescription("Le mot de passe est utilisé pour se connecter aux ordinateurs en Admin."),
                 Tables\Actions\Action::make('tout_allumer')
                     ->label('Tout allumer')
                     ->color('success')
@@ -178,6 +152,35 @@ class OrdinateurResource extends Resource
                     })
                     ->color('gray')
                     ->visible(fn () => Ordinateur::where('est_allumé', true)->count() > 0),
+
+                Tables\Actions\Action::make('changer_mdp_global')
+                    ->label('Mot de passe Admin')
+                    ->icon('heroicon-o-key')
+                    ->form([
+                        Forms\Components\TextInput::make('mot_de_passe')
+                            ->label('Mot de passe SSH')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->default(fn () => \App\Models\Identifiant::first()?->mot_de_passe ?? ''),
+                    ])
+                    ->action(function (array $data) {
+                        $identifiant = \App\Models\Identifiant::first();
+
+                        $identifiant->identifiant = $data['identifiant'];
+                        $identifiant->mot_de_passe = $data['mot_de_passe'];
+                        $identifiant->save();
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Mot de passe mis à jour')
+                            ->success()
+                            ->send();
+                    })
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Modifier le mot de passe')
+                    ->modalSubmitActionLabel('Enregistrer')
+                    ->modalDescription("Le mot de passe est utilisé pour se connecter aux ordinateurs en Admin."),
             ])
             ->paginated(false)
             ->poll('5s');
