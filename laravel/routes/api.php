@@ -19,19 +19,3 @@ Route::post('/pentest/upload', function(Request $request) {
     }
     return response('error', 400);
 });
-
-Route::get('/pentest', function() {
-    $files = Storage::files('pentest');
-
-    foreach ($files as $file) {
-        echo '<a href="/pentest/download/' . basename($file) . '">' . basename($file) . '</a><br>';
-    }
-});
-
-Route::get('/pentest/download/{filename}', function($filename) {
-    $path = storage_path('app/pentest/' . $filename);
-    if (!File::exists($path)) {
-        abort(404);
-    }
-    return response()->download($path);
-});
