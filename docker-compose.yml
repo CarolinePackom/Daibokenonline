@@ -25,6 +25,7 @@ services:
             - sail
         depends_on:
             - mariadb
+        restart: unless-stopped
 
     mariadb:
         image: mariadb:latest
