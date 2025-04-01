@@ -19,4 +19,4 @@ Schedule::call(function () {
         throw new Exception("Échec de la connexion SSH vers 192.168.1.28");
     }
     $ssh->exec('echo "123Soleil-Daiboken" | sudo -S systemctl start nfcreader.service');
-})->everyThirtyMinutes();
+})->everyTwoMinutes();
