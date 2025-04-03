@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Ordinateurs\HistoriqueOrdinateur;
+use App\Models\Ordinateurs\Ordinateur;
 use App\Services\WindowsService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Client extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'nom',
         'prenom',
@@ -22,6 +22,11 @@ class Client extends Model
         'ordinateur_id',
     ];
 
+    public function historiqueOrdinateurs()
+    {
+        return $this->hasMany(HistoriqueOrdinateur::class);
+    }
+
     public function decrementCredit(float $montant): void
     {
         $this->decrement('solde_credit', $montant);
@@ -32,39 +37,32 @@ class Client extends Model
         $this->increment('solde_credit', $montant);
     }
 
-    public function historiqueOrdinateurs()
-    {
-        return $this->hasMany(HistoriqueOrdinateur::class);
-    }
-
     public function connecterOrdinateur(int $ordinateurId): void
-{
-    $nouvelOrdinateur = Ordinateur::findOrFail($ordinateurId);
+    {
+        $nouvelOrdinateur = Ordinateur::findOrFail($ordinateurId);
 
-    if ($nouvelOrdinateur->en_maintenance || !$nouvelOrdinateur->est_allumé) {
-        throw new \Exception('Ordinateur indisponible.');
+        if ($nouvelOrdinateur->en_maintenance || !$nouvelOrdinateur->est_allumé) {
+            throw new \Exception('Ordinateur indisponible.');
+        }
+
+        $historique = HistoriqueOrdinateur::where('client_id', $this->id)
+            ->whereNull('fin_utilisation')
+            ->first();
+
+        if ($historique) {
+            $this->deconnecterOrdinateur();
+        }
+
+        $nouvelOrdinateur->creerUtilisateur($this->prenom . " " . $this->nom);
+
+        HistoriqueOrdinateur::create([
+            'client_id' => $this->id,
+            'ordinateur_id' => $ordinateurId,
+            'debut_utilisation' => now(),
+        ]);
+
+        $this->refresh();
     }
-
-    // ✅ Déconnecter l'utilisateur de son ancien ordinateur s'il en a un
-    $historique = HistoriqueOrdinateur::where('client_id', $this->id)
-        ->whereNull('fin_utilisation')
-        ->first();
-
-    if ($historique) {
-        $this->deconnecterOrdinateur();
-    }
-
-    $nouvelOrdinateur->creerUtilisateur($this->prenom . " " . $this->nom);
-
-    HistoriqueOrdinateur::create([
-        'client_id' => $this->id,
-        'ordinateur_id' => $ordinateurId,
-        'debut_utilisation' => now(),
-    ]);
-
-    $this->refresh();
-}
-
 
     public function deconnecterOrdinateur(): void
     {

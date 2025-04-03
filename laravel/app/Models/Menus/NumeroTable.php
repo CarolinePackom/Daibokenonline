@@ -2,17 +2,13 @@
 
 namespace App\Models\Menus;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class NumeroTable extends Model
 {
-    use HasFactory;
-
-    protected $fillable =
-        [
-            'numero',
-        ];
+    protected $fillable = [
+        'numero',
+    ];
 
     public function tables()
     {

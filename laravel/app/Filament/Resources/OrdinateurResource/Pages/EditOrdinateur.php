@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\OrdinateurResource\Pages;
 
 use App\Filament\Resources\OrdinateurResource;
-use App\Models\Ordinateur;
+use App\Models\Ordinateurs\Ordinateur;
 use App\Services\WindowsService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;

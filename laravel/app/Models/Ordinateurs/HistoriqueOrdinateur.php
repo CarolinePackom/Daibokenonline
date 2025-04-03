@@ -1,14 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Ordinateurs;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Client;
 use Illuminate\Database\Eloquent\Model;
 
 class HistoriqueOrdinateur extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'client_id',
         'ordinateur_id',

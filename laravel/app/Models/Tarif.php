@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Tarif extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['prix_une_heure', 'prix_un_jour'];
+    protected $fillable = [
+        'prix_une_heure',
+        'prix_un_jour',
+    ];
 }

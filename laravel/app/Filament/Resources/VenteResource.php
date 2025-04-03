@@ -4,13 +4,13 @@ namespace App\Filament\Resources;
 
 use App\Enums\StatutEnum;
 use App\Filament\Resources\VenteResource\Pages;
+use App\Models\Client;
 use App\Models\Credit;
+use App\Models\Formule;
+use App\Models\Produits\Produit;
+use App\Models\Service;
 use App\Models\Tarif;
 use App\Models\Vente;
-use App\Models\Client;
-use App\Models\Formule;
-use App\Models\Produit;
-use App\Models\Service;
 use Filament\Forms;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
@@ -19,11 +19,11 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Get;
 
 class VenteResource extends Resource
 {

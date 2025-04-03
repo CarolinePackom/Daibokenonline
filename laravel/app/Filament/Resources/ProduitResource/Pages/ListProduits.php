@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\ProduitResource\Pages;
 
 use App\Filament\Resources\ProduitResource;
-use App\Models\Produit;
+use App\Models\Produits\Produit;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;

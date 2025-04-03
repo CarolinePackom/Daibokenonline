@@ -3,14 +3,11 @@
 namespace App\Models\Menus;
 
 use App\Models\Client;
-use App\Models\Produit;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Produits\Produit;
 use Illuminate\Database\Eloquent\Model;
 
 class Menu extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'statut',
         'credit',

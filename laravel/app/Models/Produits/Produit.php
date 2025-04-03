@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Produits;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Categorie;
+use App\Models\Vente;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Produit extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia;
+    use InteractsWithMedia;
 
     protected $fillable = [
         'nom',

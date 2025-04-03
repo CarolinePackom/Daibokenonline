@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Formule extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['nom', 'duree_en_heures', 'duree_en_jours', 'prix'];
+    protected $fillable = [
+        'nom',
+        'duree_en_heures',
+        'duree_en_jours',
+        'prix',
+    ];
 
 }

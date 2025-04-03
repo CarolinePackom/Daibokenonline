@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProduitResource\Pages;
 use App\Filament\Resources\ProduitResource\RelationManagers;
-use App\Models\Produit;
+use App\Models\Produits\Produit;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;

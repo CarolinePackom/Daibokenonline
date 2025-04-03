@@ -4,16 +4,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrdinateurResource\Pages;
 use App\Filament\Resources\OrdinateurResource\RelationManagers;
-use App\Models\Ordinateur;
+use App\Models\Ordinateurs\Ordinateur;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Validation\Rule;
 
 class OrdinateurResource extends Resource
 {
@@ -170,8 +166,8 @@ class OrdinateurResource extends Resource
                     ])
                     ->action(function (array $data) {
                         // Vérifie que TOUS les ordis sont allumés
-                        $total = \App\Models\Ordinateur::count();
-                        $allumes = \App\Models\Ordinateur::where('est_allumé', true)->count();
+                        $total = \App\Models\Ordinateurs\Ordinateur::count();
+                        $allumes = \App\Models\Ordinateurs\Ordinateur::where('est_allumé', true)->count();
 
                         if ($total !== $allumes) {
                             \Filament\Notifications\Notification::make()
@@ -190,7 +186,7 @@ class OrdinateurResource extends Resource
                         $totalMachines = 0;
                         $machinesOk = 0;
 
-                        \App\Models\Ordinateur::where('est_allumé', true)->each(function ($ordinateur) use ($ancienMdp, $data, &$totalMachines, &$machinesOk) {
+                        \App\Models\Ordinateurs\Ordinateur::where('est_allumé', true)->each(function ($ordinateur) use ($ancienMdp, $data, &$totalMachines, &$machinesOk) {
                             $totalMachines++;
 
                             try {
@@ -207,7 +203,7 @@ class OrdinateurResource extends Resource
                             ->success()
                             ->send();
                     })
-                    ->visible(fn () => \App\Models\Ordinateur::where('est_allumé', false)->count() === 0)
+                    ->visible(fn () => \App\Models\Ordinateurs\Ordinateur::where('est_allumé', false)->count() === 0)
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Modifier le mot de passe')

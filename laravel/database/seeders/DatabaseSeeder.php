@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\StatutEnum;
 use App\Models\Categorie;
 use App\Models\Client;
 use App\Models\Credit;
@@ -11,15 +10,15 @@ use App\Models\Menus\Accompagnement;
 use App\Models\Menus\Sauce;
 use App\Models\Menus\Supplement;
 use App\Models\Menus\Taille;
-use App\Models\Ordinateur;
+use App\Models\Ordinateurs\Ordinateur;
 use App\Models\Service;
 use App\Models\Statut;
 use App\Models\Tarif;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+
+// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class DatabaseSeeder extends Seeder
 {

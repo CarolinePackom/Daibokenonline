@@ -3,14 +3,12 @@
 namespace App\Models;
 
 use App\Enums\StatutEnum;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Produits\Produit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class Vente extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'user_id',
         'client_id',

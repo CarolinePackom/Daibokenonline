@@ -1,16 +1,14 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Ordinateurs;
 
+use App\Models\Identifiant;
 use Exception;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use phpseclib3\Net\SSH2;
 
 class Ordinateur extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'nom',
         'adresse_ip',

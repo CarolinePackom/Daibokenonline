@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Credit extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['montant', 'prix'];
+    protected $fillable = [
+        'montant',
+        'prix',
+    ];
 }

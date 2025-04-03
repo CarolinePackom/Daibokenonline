@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Ordinateur;
+use App\Models\Ordinateurs\Ordinateur;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use phpseclib3\Net\SSH2;
