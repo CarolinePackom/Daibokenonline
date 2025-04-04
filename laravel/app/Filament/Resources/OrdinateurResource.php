@@ -91,6 +91,46 @@ class OrdinateurResource extends Resource
 
             ])
             ->actions([
+                Tables\Actions\Action::make('daiboken')
+        ->label('Daiboken')
+        ->icon('heroicon-o-user')
+        ->action(function (Ordinateur $record, array $data) {
+            try {
+                if ($data['operation'] === 'create') {
+                    $record->creerUtilisateur("Daiboken");
+                    \Filament\Notifications\Notification::make()
+                        ->title('Utilisateur créé')
+                        ->body("L'utilisateur 'Daiboken' a bien été créé sur {$record->nom}.")
+                        ->success()
+                        ->send();
+                } else {
+                    $record->supprimerUtilisateur("Daiboken");
+                    \Filament\Notifications\Notification::make()
+                        ->title('Utilisateur supprimé')
+                        ->body("L'utilisateur 'Daiboken' a bien été supprimé de {$record->nom}.")
+                        ->success()
+                        ->send();
+                }
+            } catch (\Exception $e) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Erreur')
+                    ->body("Une erreur est survenue : " . $e->getMessage())
+                    ->danger()
+                    ->send();
+            }
+            sleep(30);
+            $record->refresh();
+        })
+        ->form([
+            Forms\Components\Select::make('operation')
+                ->label('Opération')
+                ->options([
+                    'create' => 'Créer Daiboken',
+                    'delete' => 'Supprimer Daiboken',
+                ])
+                ->required(),
+        ])
+        ->visible(fn (Ordinateur $record) => $record->est_allumé && is_null($record->clientActuel()->first())),
                 /*
                 Tables\Actions\Action::make('mettre_a_jour')
                     ->label('Mettre à jour')
