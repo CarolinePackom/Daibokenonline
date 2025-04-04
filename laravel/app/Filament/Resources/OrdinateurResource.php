@@ -90,7 +90,7 @@ class OrdinateurResource extends Resource
                     ->dateTimeTooltip(),
                 Tables\Columns\ToggleColumn::make('daiboken')
                     ->label('Daiboken')
-                    ->visible(fn(Ordinateur $record) => $record->est_allumé && is_null($record->clientActuel()->first()))
+                    ->visible(fn(Ordinateur $record) => $record->est_allumé && is_null($record->clientActuel()))
 ->afterStateUpdated(function ($state, $record = null) {
     if (!$record) {
         return;
