@@ -89,40 +89,42 @@ class OrdinateurResource extends Resource
                     ->since()
                     ->dateTimeTooltip(),
                 Tables\Columns\ToggleColumn::make('daiboken')
-                    ->label('Daiboken')
-                    ->visible(fn(Ordinateur $record) => $record->est_allumé && is_null($record->clientActuel()))
-->afterStateUpdated(function ($state, $record = null) {
-    if (!$record) {
-        return;
-    }
-    try {
-        if ($state) {
-            // Créer l'utilisateur "Daiboken"
-            $record->creerUtilisateur("Daiboken");
+    ->label('Daiboken')
+    ->visible(fn($record) => $record
+        && $record->est_allumé
+        && is_null($record->clientActuel()->first()))
+    ->afterStateUpdated(function ($state, $record) {
+        if (!$record) {
+            return;
+        }
+        try {
+            if ($state) {
+                // Créer l'utilisateur "Daiboken"
+                $record->creerUtilisateur("Daiboken");
+                \Filament\Notifications\Notification::make()
+                    ->title('Utilisateur créé')
+                    ->body("L'utilisateur 'Daiboken' a bien été créé sur {$record->nom}.")
+                    ->success()
+                    ->send();
+            } else {
+                // Supprimer l'utilisateur "Daiboken"
+                $record->supprimerUtilisateur("Daiboken");
+                \Filament\Notifications\Notification::make()
+                    ->title('Utilisateur supprimé')
+                    ->body("L'utilisateur 'Daiboken' a bien été supprimé de {$record->nom}.")
+                    ->success()
+                    ->send();
+            }
+        } catch (\Exception $e) {
             \Filament\Notifications\Notification::make()
-                ->title('Utilisateur créé')
-                ->body("L'utilisateur 'Daiboken' a bien été créé sur {$record->nom}.")
-                ->success()
-                ->send();
-        } else {
-            // Supprimer l'utilisateur "Daiboken"
-            $record->supprimerUtilisateur("Daiboken");
-            \Filament\Notifications\Notification::make()
-                ->title('Utilisateur supprimé')
-                ->body("L'utilisateur 'Daiboken' a bien été supprimé de {$record->nom}.")
-                ->success()
+                ->title('Erreur')
+                ->body("Une erreur est survenue : " . $e->getMessage())
+                ->danger()
                 ->send();
         }
-    } catch (\Exception $e) {
-        \Filament\Notifications\Notification::make()
-            ->title('Erreur')
-            ->body("Une erreur est survenue : " . $e->getMessage())
-            ->danger()
-            ->send();
-    }
-    sleep(30);
-    $record->refresh();
-}),
+        sleep(30);
+        $record->refresh();
+    }),
 
             ])
             ->actions([
