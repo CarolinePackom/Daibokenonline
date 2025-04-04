@@ -91,7 +91,10 @@ class OrdinateurResource extends Resource
                 Tables\Columns\ToggleColumn::make('daiboken')
                     ->label('Daiboken')
                     ->visible(fn(Ordinateur $record) => $record->est_allumé && !$record->clientActuel)
-                    ->afterStateUpdated(function ($state, Ordinateur $record) {
+                    ->afterStateUpdated(function ($state, ?Ordinateur $record) {
+                        if (!$record) {
+                            return;
+                        }
                         try {
                             if ($state) {
                                 // Créer l'utilisateur "Daiboken"
@@ -120,6 +123,7 @@ class OrdinateurResource extends Resource
                         sleep(30);
                         $record->refresh();
                     }),
+
             ])
             ->actions([
                 /*
